@@ -222,8 +222,9 @@
     if (document.fonts?.ready) await document.fonts.ready;
     const prevTitle = document.title;
     document.title = pdfName(bill).replace(/\.pdf$/, '');
-    window.print();
-    document.title = prevTitle;
+    if (window.KPEAndroid) KPEAndroid.print(document.title); // Android app: system print screen (printer or Save as PDF)
+    else window.print();
+    setTimeout(() => { document.title = prevTitle; }, 1500);
   }
 
   const pdfName = (b) => `${(b.bill_no || 'Bill').replace(/[\\/]+/g, '-')}_${(b.customer_name || '').replace(/[^\w]+/g, '_').slice(0, 30)}.pdf`;
@@ -247,14 +248,23 @@
     return { worker, done: () => holder.remove() };
   }
 
+  // Android app: hand the finished PDF to the phone (saved in Downloads/KPE Bills, then opened or shared)
+  async function androidPdf(bill, opts, share) {
+    const { worker, done } = await pdfWorker(bill, opts);
+    try { const uri = await worker.outputPdf('datauristring'); KPEAndroid.savePdf(uri.slice(uri.indexOf(',') + 1), pdfName(bill), !!share); }
+    finally { done(); }
+  }
+
   async function downloadPdf(bill, opts) {
     toast('Preparing PDF…');
+    if (window.KPEAndroid) return androidPdf(bill, opts, false);
     const { worker, done } = await pdfWorker(bill, opts);
     try { await worker.save(); } finally { done(); }
   }
 
   async function shareBill(bill, opts) {
     const c = calcBill(bill.items || [], { companyState: S.settings.state, placeOfSupply: bill.place_of_supply, roundOff: S.settings.round_off !== false, paid: bill.paid });
+    if (window.KPEAndroid) { toast('Preparing PDF…'); return androidPdf(bill, opts, true); }
     const text = `${S.settings.name || 'K.P. ENTERPRISES'}\nBill ${bill.bill_no || ''} dated ${dmy(bill.bill_date)}\nCustomer: ${bill.customer_name}\nTotal: ${money(c.grand)}\nPaid: ${money(c.paid)}\nBalance: ${money(c.balance)}\nThank you!`;
     try {
       const { worker, done } = await pdfWorker(bill, opts);
@@ -1055,7 +1065,8 @@
           1. Add the person above with their email and a starting password.<br>
           2. Send them the app link: <b>${esc(appUrl)}</b> <button class="btn btn-sm" id="t-copy" style="margin-left:6px">Copy link</button><br>
           3. They log in on their phone or computer. On a phone, use the browser menu → <b>Add to Home screen</b> to install it like an app.<br>
-          4. Windows computer: <a href="download/KPE-Billing-Setup.exe" download><b>Download the KPE Billing installer</b></a> (170 KB) — adds a full-screen KPE Billing app to the desktop.<br><br>
+          4. Windows computer: <a href="download/KPE-Billing-Setup.exe" download><b>Download the KPE Billing installer</b></a> (170 KB) — adds a full-screen KPE Billing app to the desktop.<br>
+          5. Android phone: <a href="download/KPE-Billing.apk" download><b>Download the KPE Billing app (APK)</b></a> — open it on the phone and tap Install.<br><br>
           <b>Admin</b> can do everything. <b>Staff</b> can make and edit bills, record payments and manage customers &amp; products, but cannot delete bills or change company settings, signature, stamp or team.
         </div>
       </div>`;
