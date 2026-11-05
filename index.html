@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>K.P. Enterprises · Billing</title>
+  <meta name="theme-color" content="#1c2a23" />
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/login.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/invoice.css" />
+</head>
+<body>
+
+<!-- ============================ LOGIN ============================ -->
+<section id="login-view" class="login" hidden>
+  <div class="sky">
+    <div class="sun"><div class="sun-rays"></div><div class="sun-core"></div></div>
+    <div class="stars"></div>
+  </div>
+  <div class="panel-floor"><div class="panel-grid"></div></div>
+  <div class="leaves" aria-hidden="true">
+    <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+  </div>
+
+  <div class="scene" id="login-scene">
+    <div class="card3d" id="login-card">
+      <div class="card-edge"></div>
+      <div class="card-face">
+        <div class="logo-stage">
+          <div class="orbit orbit-a"></div>
+          <div class="orbit orbit-b"></div>
+          <div class="logo-plate">
+            <img src="assets/kpe-mark.png" alt="KPE logo" class="logo-mark" />
+          </div>
+        </div>
+        <h1 class="brand-name">K.P. ENTERPRISES</h1>
+        <p class="brand-tag">SOLAR ENERGY <span>|</span> SUSTAINABILITY</p>
+
+        <form id="login-form" class="login-form" autocomplete="on">
+          <label class="field3d">
+            <span class="ico">
+              <svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m4 7 8 6 8-6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+            </span>
+            <input type="email" id="login-email" placeholder=" " required autocomplete="username" />
+            <span class="lbl">Email address</span>
+          </label>
+          <label class="field3d">
+            <span class="ico">
+              <svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+            </span>
+            <input type="password" id="login-password" placeholder=" " required autocomplete="current-password" />
+            <span class="lbl">Password</span>
+            <button type="button" class="eye" id="toggle-pass" aria-label="Show password">
+              <svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+            </button>
+          </label>
+          <div class="login-row">
+            <span class="muted-sm">Secure billing portal</span>
+            <a href="#" id="forgot-link">Forgot password?</a>
+          </div>
+          <p class="login-error" id="login-error" role="alert"></p>
+          <button type="submit" class="btn3d" id="login-btn">
+            <span class="btn3d-top">Login</span>
+            <span class="btn3d-shine"></span>
+          </button>
+        </form>
+        <p class="login-foot">© <span id="yr"></span> K.P. Enterprises · Sandila, Hardoi</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ APP ============================ -->
+<section id="app-view" class="app" hidden>
+  <aside class="sidebar" id="sidebar">
+    <div class="side-brand">
+      <div class="side-logo"><img src="assets/kpe-mark.png" alt="" /></div>
+      <div>
+        <b>K.P. ENTERPRISES</b>
+        <small>Billing Suite</small>
+      </div>
+    </div>
+    <nav class="side-nav">
+      <a href="#/dashboard" data-route="dashboard"><svg viewBox="0 0 24 24"><path d="M3 13h8V3H3zm10 8h8V11h-8zM3 21h8v-6H3zm10-18v6h8V3z"/></svg>Dashboard</a>
+      <a href="#/new" data-route="new"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg>New Bill</a>
+      <a href="#/bills" data-route="bills"><svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6zM14 3.5V8h4.5M9 12h8M9 16h8"/></svg>All Bills</a>
+      <a href="#/customers" data-route="customers"><svg viewBox="0 0 24 24"><path d="M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0zM4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Customers</a>
+      <a href="#/products" data-route="products"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4zm0 0v10l9 4 9-4V7M12 11v10"/></svg>Products</a>
+      <a href="#/settings" data-route="settings"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm7.4-3a7.4 7.4 0 0 0-.1-1.3l2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-2.2-1.3L14.3 3h-4l-.4 2.4a7.6 7.6 0 0 0-2.2 1.3l-2.4-1-2 3.4 2 1.6a7.4 7.4 0 0 0 0 2.6l-2 1.6 2 3.4 2.4-1a7.6 7.6 0 0 0 2.2 1.3l.4 2.4h4l.4-2.4a7.6 7.6 0 0 0 2.2-1.3l2.4 1 2-3.4-2-1.6c.1-.4.1-.9.1-1.3z"/></svg>Settings</a>
+    </nav>
+    <div class="side-user">
+      <div class="avatar" id="user-avatar">K</div>
+      <div class="side-user-info"><b id="user-email">—</b><small>Administrator</small></div>
+      <button class="icon-btn" id="logout-btn" title="Logout"><svg viewBox="0 0 24 24"><path d="M10 17l-5-5 5-5M5 12h11M14 4h5v16h-5"/></svg></button>
+    </div>
+  </aside>
+  <div class="side-backdrop" id="side-backdrop"></div>
+
+  <main class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" id="menu-btn" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+      <h2 id="page-title">Dashboard</h2>
+      <div class="topbar-actions">
+        <a href="#/new" class="btn btn-primary btn-sm"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg><span>New Bill</span></a>
+      </div>
+    </header>
+    <div class="page" id="page"></div>
+  </main>
+</section>
+
+<!-- Boot loader -->
+<div id="boot" class="boot"><div class="boot-sun"></div></div>
+
+<!-- Modal -->
+<div class="modal" id="modal" hidden>
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-box" id="modal-box"></div>
+</div>
+
+<!-- Toasts -->
+<div class="toasts" id="toasts"></div>
+
+<!-- Print target (only visible when printing) -->
+<div id="print-area"></div>
+
+<script src="vendor/supabase.min.js"></script>
+<script src="vendor/html2pdf.bundle.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/invoice.js"></script>
+<script src="js/db.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

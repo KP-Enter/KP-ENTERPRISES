@@ -1,0 +1,305 @@
+/* =====================================================================
+   K.P. ENTERPRISES — 3D LOGIN
+   Palette from the logo: charcoal #4d4f50, leaf green #8fbf6a, sun gold #d8b46a
+   ===================================================================== */
+:root {
+  --kp-charcoal: #4d4f50;
+  --kp-green: #8fbf6a;
+  --kp-green-d: #5f9441;
+  --kp-gold: #d8b46a;
+  --kp-gold-l: #f3d79a;
+  --kp-night: #0d1a15;
+}
+
+.login {
+  position: fixed; inset: 0; overflow: hidden;
+  font-family: 'Poppins', system-ui, sans-serif;
+  background: radial-gradient(120% 90% at 50% 100%, #2c3d2f 0%, #15241d 45%, var(--kp-night) 100%);
+  perspective: 1200px;
+  color: #fff;
+}
+
+/* ---------- Sky: rising sun with rotating rays ---------- */
+.sky { position: absolute; inset: 0; pointer-events: none; }
+.sun {
+  position: absolute; left: 50%; top: 62%;
+  width: 900px; height: 900px; transform: translate(-50%, -50%);
+  animation: sunRise 2.4s cubic-bezier(.2,.8,.2,1) both;
+}
+.sun-core {
+  position: absolute; inset: 31%;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff3cf 0%, #f4d58d 30%, rgba(216,180,106,.45) 55%, rgba(216,180,106,0) 72%);
+  filter: blur(2px);
+  animation: sunPulse 6s ease-in-out infinite;
+}
+.sun-rays {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(243,215,154,.22) 0deg 3deg, transparent 3deg 15deg);
+  -webkit-mask: radial-gradient(circle, transparent 18%, #000 30%, transparent 68%);
+          mask: radial-gradient(circle, transparent 18%, #000 30%, transparent 68%);
+  animation: spin 90s linear infinite;
+}
+@keyframes sunRise { from { top: 95%; opacity: 0; } to { top: 62%; opacity: 1; } }
+@keyframes sunPulse { 50% { transform: scale(1.06); opacity: .85; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.stars {
+  position: absolute; inset: 0 0 45% 0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 20%, #fff8 50%, transparent 51%),
+    radial-gradient(1px 1px at 30% 8%, #fff7 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 72% 14%, #fff8 50%, transparent 51%),
+    radial-gradient(1px 1px at 88% 30%, #fff6 50%, transparent 51%),
+    radial-gradient(1px 1px at 55% 5%, #fff7 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 5% 40%, #fff5 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 94% 6%, #fff6 50%, transparent 51%);
+  animation: twinkle 5s ease-in-out infinite alternate;
+}
+@keyframes twinkle { to { opacity: .4; } }
+
+/* ---------- Perspective floor of solar panels ---------- */
+.panel-floor {
+  position: absolute; left: -50%; right: -50%; bottom: -10%; height: 70%;
+  transform-origin: 50% 100%;
+  transform: rotateX(72deg);
+  pointer-events: none;
+  -webkit-mask: linear-gradient(to top, #000 30%, transparent 95%);
+          mask: linear-gradient(to top, #000 30%, transparent 95%);
+}
+.panel-grid {
+  position: absolute; inset: 0;
+  background-color: #12304a;
+  background-image:
+    linear-gradient(115deg, rgba(243,215,154,.0) 40%, rgba(243,215,154,.35) 50%, rgba(243,215,154,0) 60%),
+    linear-gradient(#c9d6e0 3px, transparent 3px),
+    linear-gradient(90deg, #c9d6e0 3px, transparent 3px),
+    linear-gradient(rgba(140,180,220,.35) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(140,180,220,.35) 1px, transparent 1px);
+  background-size: 300% 100%, 160px 100px, 160px 100px, 40px 25px, 40px 25px;
+  animation: panelsMove 6s linear infinite, glint 7s ease-in-out infinite;
+}
+@keyframes panelsMove {
+  from { background-position: 0 0, 0 0, 0 0, 0 0, 0 0; }
+  to   { background-position: 0 0, 0 100px, 0 0, 0 25px, 0 0; }
+}
+@keyframes glint { 0%,100% { filter: brightness(.9); } 50% { filter: brightness(1.15); } }
+
+/* ---------- Drifting leaves ---------- */
+.leaves { position: absolute; inset: 0; pointer-events: none; transform-style: preserve-3d; }
+.leaves i {
+  position: absolute; top: -40px; width: 22px; height: 22px;
+  background: linear-gradient(135deg, #a9d486, var(--kp-green-d));
+  border-radius: 0 100% 0 100%;
+  box-shadow: inset -2px -2px 0 rgba(0,0,0,.15);
+  opacity: .85;
+  animation: leafFall linear infinite;
+}
+.leaves i::after { content: ''; position: absolute; left: 50%; top: 10%; bottom: 10%; width: 1px; background: rgba(255,255,255,.5); transform: rotate(45deg); }
+.leaves i:nth-child(1) { left: 6%;  animation-duration: 14s; animation-delay: -2s; }
+.leaves i:nth-child(2) { left: 18%; animation-duration: 18s; animation-delay: -9s; transform: scale(.7); }
+.leaves i:nth-child(3) { left: 32%; animation-duration: 16s; animation-delay: -5s; }
+.leaves i:nth-child(4) { left: 48%; animation-duration: 20s; animation-delay: -13s; }
+.leaves i:nth-child(5) { left: 63%; animation-duration: 15s; animation-delay: -1s; }
+.leaves i:nth-child(6) { left: 76%; animation-duration: 19s; animation-delay: -7s; }
+.leaves i:nth-child(7) { left: 88%; animation-duration: 17s; animation-delay: -11s; }
+.leaves i:nth-child(8) { left: 95%; animation-duration: 22s; animation-delay: -4s; }
+@keyframes leafFall {
+  0%   { transform: translate3d(0, -5vh, 0) rotateX(0) rotateY(0) rotateZ(0); }
+  25%  { transform: translate3d(40px, 25vh, 80px) rotateX(120deg) rotateY(60deg) rotateZ(40deg); }
+  50%  { transform: translate3d(-30px, 55vh, -60px) rotateX(240deg) rotateY(180deg) rotateZ(90deg); }
+  75%  { transform: translate3d(50px, 80vh, 40px) rotateX(300deg) rotateY(260deg) rotateZ(160deg); }
+  100% { transform: translate3d(0, 110vh, 0) rotateX(360deg) rotateY(360deg) rotateZ(220deg); }
+}
+
+/* ---------- 3D card ---------- */
+.scene {
+  position: relative; z-index: 2;
+  min-height: 100%;
+  display: grid; place-items: center;
+  padding: 110px 24px 24px;
+  perspective: 1400px;
+}
+.card3d {
+  position: relative;
+  width: min(420px, 100%);
+  transform-style: preserve-3d;
+  transform: rotateX(var(--rx, 6deg)) rotateY(var(--ry, -8deg));
+  transition: transform .25s ease-out;
+  animation: cardIn 1.3s .3s cubic-bezier(.2,.9,.25,1.15) both;
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(80px) rotateX(55deg) rotateY(-25deg) scale(.85); }
+}
+.card-face {
+  position: relative;
+  padding: 34px 34px 22px;
+  border-radius: 28px;
+  background:
+    linear-gradient(160deg, rgba(255,255,255,.96) 0%, rgba(248,247,240,.94) 100%);
+  color: var(--kp-charcoal);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.9) inset,
+    0 -6px 18px rgba(0,0,0,.05) inset,
+    0 40px 80px -20px rgba(0,0,0,.65),
+    0 0 0 1px rgba(216,180,106,.35);
+  transform-style: preserve-3d;
+  transform: translateZ(20px);
+}
+.card-face::before { /* gold sheen that follows the mouse */
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(400px circle at var(--mx, 30%) var(--my, 0%), rgba(243,215,154,.35), transparent 45%);
+}
+.card-edge { /* gives the card physical thickness: sits just behind the face */
+  position: absolute; inset: 0; border-radius: 28px; z-index: 0;
+  background: linear-gradient(160deg, #c9a75d, #6d7a52 60%, #3a4a3a);
+  transform: translate3d(0, 10px, -10px);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.2);
+  pointer-events: none;
+}
+.card-face { z-index: 1; }
+
+/* ---------- Logo stage ---------- */
+.logo-stage {
+  position: relative; height: 150px; margin: -78px auto 6px; width: 190px;
+  transform-style: preserve-3d;
+  transform: translateZ(70px);
+}
+.logo-plate {
+  position: absolute; inset: 0 12px;
+  border-radius: 50% / 46%;
+  background: radial-gradient(circle at 35% 25%, #ffffff 0%, #f7f4ea 55%, #e8e1cc 100%);
+  box-shadow:
+    0 20px 35px -10px rgba(0,0,0,.45),
+    0 0 0 4px #fff,
+    0 0 0 6px rgba(216,180,106,.7),
+    0 0 40px rgba(243,215,154,.6);
+  display: grid; place-items: center;
+  animation: plateFloat 5s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+.logo-mark {
+  width: 74%; height: auto;
+  filter: drop-shadow(0 6px 6px rgba(0,0,0,.18));
+  transform: translateZ(30px);
+}
+@keyframes plateFloat {
+  0%,100% { transform: translateY(0) rotateY(-10deg); }
+  50%     { transform: translateY(-8px) rotateY(10deg); }
+}
+.orbit {
+  position: absolute; left: 50%; top: 50%;
+  width: 230px; height: 230px; margin: -115px 0 0 -115px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: var(--kp-gold);
+  border-right-color: rgba(216,180,106,.35);
+  transform-style: preserve-3d;
+}
+.orbit-a { animation: orbitA 7s linear infinite; }
+.orbit-b { border-top-color: var(--kp-green); border-right-color: rgba(143,191,106,.3); width: 200px; height: 200px; margin: -100px 0 0 -100px; animation: orbitB 9s linear infinite; }
+@keyframes orbitA { from { transform: rotateX(72deg) rotateZ(0); } to { transform: rotateX(72deg) rotateZ(360deg); } }
+@keyframes orbitB { from { transform: rotateX(70deg) rotateY(20deg) rotateZ(360deg); } to { transform: rotateX(70deg) rotateY(20deg) rotateZ(0); } }
+
+.brand-name {
+  margin: 4px 0 0; text-align: center;
+  font-size: 26px; font-weight: 600; letter-spacing: 1.5px;
+  color: var(--kp-charcoal);
+  text-shadow: 0 1px 0 #fff, 0 2px 0 #d9d6cc, 0 3px 0 #cfcbbd, 0 6px 10px rgba(0,0,0,.18);
+  transform: translateZ(40px);
+}
+.brand-tag {
+  margin: 2px 0 22px; text-align: center;
+  font-size: 11.5px; letter-spacing: 2.4px; font-weight: 500; color: #6b6d6a;
+  transform: translateZ(30px);
+}
+.brand-tag span { color: var(--kp-gold); }
+
+/* ---------- Form ---------- */
+.login-form { transform-style: preserve-3d; transform: translateZ(30px); }
+.field3d {
+  position: relative; display: block; margin-bottom: 16px;
+}
+.field3d input {
+  width: 100%; height: 54px; box-sizing: border-box;
+  padding: 18px 46px 6px 48px;
+  border: 1px solid #e3dfd2; border-radius: 14px;
+  background: linear-gradient(#f6f4ee, #fff);
+  font: 500 15px 'Poppins', sans-serif; color: #2e3130;
+  box-shadow: inset 0 3px 6px rgba(0,0,0,.07), 0 1px 0 #fff;
+  outline: none; transition: border-color .2s, box-shadow .2s, transform .2s;
+}
+.field3d input:focus {
+  border-color: var(--kp-green);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.05), 0 0 0 4px rgba(143,191,106,.22), 0 10px 20px -10px rgba(95,148,65,.6);
+  transform: translateY(-2px);
+}
+.field3d .lbl {
+  position: absolute; z-index: 2; left: 48px; top: 17px;
+  font-size: 14px; color: #8b8d88; pointer-events: none;
+  transition: all .18s ease;
+}
+.field3d input:focus + .lbl,
+.field3d input:not(:placeholder-shown) + .lbl { top: 7px; font-size: 10.5px; color: var(--kp-green-d); letter-spacing: .4px; }
+.field3d .ico {
+  position: absolute; left: 14px; top: 15px; width: 22px; height: 22px; color: #9a9c95; z-index: 2; pointer-events: none;
+}
+.field3d .ico svg, .eye svg { width: 100%; height: 100%; }
+.field3d input:focus ~ .ico { color: var(--kp-green-d); }
+.eye { position: absolute; z-index: 2; right: 12px; top: 15px; width: 24px; height: 24px; border: 0; background: none; color: #9a9c95; cursor: pointer; padding: 0; }
+.eye.on { color: var(--kp-gold); }
+
+.login-row { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; margin: -2px 2px 12px; }
+.login-row a { color: var(--kp-green-d); text-decoration: none; font-weight: 500; }
+.login-row a:hover { text-decoration: underline; }
+.muted-sm { color: #9a9c95; display: inline-flex; align-items: center; gap: 6px; }
+.muted-sm::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--kp-green); box-shadow: 0 0 0 3px rgba(143,191,106,.25); }
+.login-error { min-height: 18px; margin: 0 0 10px; color: #c0392b; font-size: 12.5px; text-align: center; }
+.login-error.ok { color: var(--kp-green-d); }
+
+/* 3D push button */
+.btn3d {
+  position: relative; width: 100%; height: 56px; border: 0; padding: 0; cursor: pointer;
+  border-radius: 16px; background: #3f6b2b;
+  box-shadow: 0 10px 22px -8px rgba(63,107,43,.8);
+  overflow: hidden;
+  font: 600 16px 'Poppins', sans-serif; letter-spacing: 1px;
+}
+.btn3d-top {
+  position: absolute; inset: 0 0 6px 0; display: grid; place-items: center;
+  border-radius: 16px; color: #fff;
+  background: linear-gradient(135deg, #a3cf7f 0%, var(--kp-green) 35%, var(--kp-green-d) 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
+  text-shadow: 0 1px 2px rgba(0,0,0,.25);
+  transition: transform .12s ease, inset .12s ease;
+}
+.btn3d:hover .btn3d-top { filter: brightness(1.05); }
+.btn3d:active .btn3d-top { inset: 5px 0 1px 0; }
+.btn3d-shine {
+  position: absolute; top: 0; bottom: 6px; left: -60%; width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.55), transparent);
+  transform: skewX(-20deg);
+  animation: shine 3.5s ease-in-out infinite;
+}
+@keyframes shine { 0%, 60% { left: -60%; } 100% { left: 130%; } }
+.btn3d[disabled] { cursor: progress; }
+.btn3d[disabled] .btn3d-top { filter: grayscale(.4) brightness(.95); }
+.btn3d .spin { width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
+
+.login-foot { margin: 18px 0 0; font-size: 11px; text-align: center; color: #a3a59f; }
+
+.login.shake .card3d { animation: shake .45s; }
+@keyframes shake {
+  20%, 60% { transform: translateX(-10px) rotateY(-8deg); }
+  40%, 80% { transform: translateX(10px) rotateY(8deg); }
+}
+
+@media (max-width: 520px) {
+  .card-face { padding: 28px 22px 18px; }
+  .brand-name { font-size: 22px; }
+  .logo-stage { height: 130px; width: 170px; margin-top: -70px; }
+  .sun { width: 600px; height: 600px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .login *, .login *::before, .login *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+}
