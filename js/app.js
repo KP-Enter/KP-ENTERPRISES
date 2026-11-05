@@ -125,6 +125,10 @@
     $('#login-view').hidden = true;
     $('#app-view').hidden = false;
     S.inApp = true;
+    S.role = await DB.myRole().catch(() => 'staff');
+    S.isAdmin = S.role === 'admin';
+    document.body.classList.toggle('is-admin', S.isAdmin);
+    $('#user-role').textContent = S.isAdmin ? 'Administrator' : 'Staff';
     try {
       [S.settings, S.products, S.customers] = await Promise.all([DB.getSettings(), DB.products(), DB.customers()]);
     } catch (e) { fail(e); }
@@ -138,21 +142,22 @@
   const refreshLists = async () => { try { [S.products, S.customers] = await Promise.all([DB.products(), DB.customers()]); } catch (e) { /* non fatal */ } };
 
   /* =========================== ROUTER =========================== */
-  const TITLES = { dashboard: 'Dashboard', new: 'New Bill', edit: 'Edit Bill', bills: 'All Bills', customers: 'Customers', products: 'Products', settings: 'Settings' };
+  const TITLES = { dashboard: 'Dashboard', new: 'New Bill', edit: 'Edit Bill', bills: 'All Bills', customers: 'Customers', products: 'Products', team: 'Team', settings: 'Settings' };
   let leaveGuard = null;
 
   function route() {
     if (!S.inApp) return;
     const parts = location.hash.replace(/^#\/?/, '').split('/');
-    const name = TITLES[parts[0]] ? parts[0] : 'dashboard';
-    $('#page-title').textContent = TITLES[name];
+    let name = TITLES[parts[0]] ? parts[0] : 'dashboard';
+    if (name === 'team' && !S.isAdmin) name = 'dashboard';
+    $('#page-title').textContent = name === 'settings' && !S.isAdmin ? 'My account' : TITLES[name];
     $$('.side-nav a').forEach((a) => a.classList.toggle('active', a.dataset.route === (name === 'edit' ? 'bills' : name)));
     $('#app-view').classList.remove('nav-open');
     leaveGuard = null;
     const page = $('#page');
     page.innerHTML = '<div class="loading-row"><span class="spinner"></span></div>';
     window.scrollTo(0, 0);
-    const fn = { dashboard: pageDashboard, new: pageEditor, edit: pageEditor, bills: pageBills, customers: pageCustomers, products: pageProducts, settings: pageSettings }[name];
+    const fn = { dashboard: pageDashboard, new: pageEditor, edit: pageEditor, bills: pageBills, customers: pageCustomers, products: pageProducts, team: pageTeam, settings: pageSettings }[name];
     Promise.resolve(fn(page, parts.slice(1))).catch((e) => { page.innerHTML = `<div class="card empty">${esc(e.message)}</div>`; fail(e); });
   }
   window.addEventListener('hashchange', route);
@@ -295,14 +300,14 @@
       <thead><tr><th>Bill No.</th><th>Date</th><th>Customer</th><th class="num">Amount</th><th class="num">Balance</th><th>Status</th><th></th></tr></thead>
       <tbody>${bills.map((b) => `
         <tr class="click" data-id="${b.id}">
-          <td><b>${esc(b.bill_no)}</b></td><td>${dmy(b.bill_date)}</td>
+          <td><b>${esc(b.bill_no)}</b>${b.created_by ? `<br><span class="by">by ${esc(String(b.created_by).split('@')[0])}</span>` : ''}</td><td>${dmy(b.bill_date)}</td>
           <td>${esc(b.customer_name)}${b.customer_phone ? `<br><small class="muted">${esc(b.customer_phone)}</small>` : ''}</td>
           <td class="num">${money(b.grand_total)}</td><td class="num">${money(b.balance)}</td><td>${statusPill(b)}</td>
           <td class="acts">
             <button class="icon-btn" data-act="print" title="Print">${icon.print}</button>
             <button class="icon-btn" data-act="pdf" title="Download PDF">${icon.pdf}</button>
             <button class="icon-btn" data-act="edit" title="Edit">${icon.edit}</button>
-            <button class="icon-btn" data-act="del" title="Delete" style="color:#b3261e">${icon.del}</button>
+            <button class="icon-btn admin-only" data-act="del" title="Delete" style="color:#b3261e">${icon.del}</button>
           </td>
         </tr>`).join('')}</tbody></table></div>`;
   }
@@ -333,7 +338,7 @@
         <button class="btn btn-sm" data-a="share">${icon.share}Share</button>
         <button class="btn btn-sm" data-a="pay">${icon.rupee}Record payment</button>
         <button class="btn btn-sm" data-a="edit">${icon.edit}Edit</button>
-        <button class="btn btn-sm btn-danger" data-a="del">${icon.del}Delete</button>
+        <button class="btn btn-sm btn-danger admin-only" data-a="del">${icon.del}Delete</button>
       </div>
       ${signToggles()}
       <div class="preview-shell" style="margin-top:12px"></div>`);
@@ -747,7 +752,31 @@
     return out;
   }
 
+  function passwordCard() {
+    return `<div class="card" style="margin-top:18px">
+        <div class="card-h"><h3>Change password</h3></div>
+        <form id="pw-form" class="grid g3" style="align-items:end">
+          <label class="fld"><span>New password</span><input class="input" type="password" name="p1" minlength="8" required autocomplete="new-password"></label>
+          <label class="fld"><span>Confirm password</span><input class="input" type="password" name="p2" minlength="8" required autocomplete="new-password"></label>
+          <button class="btn btn-dark">Update password</button>
+        </form>
+      </div>`;
+  }
+  function wirePassword() {
+    $('#pw-form').addEventListener('submit', async (e) => {
+      e.preventDefault(); const { p1, p2 } = e.target;
+      if (p1.value !== p2.value) return toast('Passwords do not match', true);
+      try { await DB.changePassword(p1.value); e.target.reset(); toast('Password updated'); } catch (er) { fail(er); }
+    });
+  }
+
   async function pageSettings(page) {
+    if (!S.isAdmin) {
+      page.innerHTML = `<div class="card"><div class="card-h"><h3>${esc(S.user?.email || '')}</h3><span class="role staff">Staff</span></div>
+        <p class="muted" style="margin:0">You can create bills, record payments and manage customers and products. Company details, signature, stamp and team are managed by the admin.</p></div>${passwordCard()}`;
+      wirePassword();
+      return;
+    }
     S.settings = await DB.getSettings();
     const st = S.settings;
     let signature = st.signature || null, stamp = st.stamp || null;
@@ -812,14 +841,7 @@
         <div class="sticky-save"><button class="btn btn-primary" id="set-save">${icon.save}Save settings</button></div>
       </form>
 
-      <div class="card" style="margin-top:18px">
-        <div class="card-h"><h3>Change password</h3></div>
-        <form id="pw-form" class="grid g3" style="align-items:end">
-          <label class="fld"><span>New password</span><input class="input" type="password" name="p1" minlength="8" required autocomplete="new-password"></label>
-          <label class="fld"><span>Confirm password</span><input class="input" type="password" name="p2" minlength="8" required autocomplete="new-password"></label>
-          <button class="btn btn-dark">Update password</button>
-        </form>
-      </div>`;
+      ${passwordCard()}`;
 
     const f = $('#set-form');
     ['name', 'gstin', 'address', 'phone', 'email', 'state', 'doc_title', 'party_label', 'bill_prefix', 'accent_color', 'bank_details', 'terms'].forEach((k) => { if (f[k]) f[k].value = st[k] ?? ''; });
@@ -857,11 +879,79 @@
       try { S.settings = await DB.saveSettings(patch); toast('Settings saved'); } catch (er) { fail(er); } finally { btn.disabled = false; }
     });
 
-    $('#pw-form').addEventListener('submit', async (e) => {
-      e.preventDefault(); const { p1, p2 } = e.target;
-      if (p1.value !== p2.value) return toast('Passwords do not match', true);
-      try { await DB.changePassword(p1.value); e.target.reset(); toast('Password updated'); } catch (er) { fail(er); }
+    wirePassword();
+  }
+
+  /* =========================== TEAM (admin) =========================== */
+  async function pageTeam(page) {
+    const { users } = await DB.team('list');
+    const appUrl = location.origin + location.pathname;
+    page.innerHTML = `
+      <div class="card">
+        <div class="card-h"><div><h3>Team logins</h3><span class="muted" style="font-size:12px">Everyone here can log in from any phone or computer — their bills save to the same records.</span></div>
+          <button class="btn btn-primary btn-sm" id="t-add">${icon.plus}Add person</button></div>
+        <div class="table-wrap"><table class="tbl"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Last login</th><th></th></tr></thead>
+        <tbody>${users.map((u) => `<tr data-email="${esc(u.email)}">
+          <td><b>${esc(u.full_name || '—')}</b>${u.is_me ? ' <span class="muted" style="font-size:11px">(you)</span>' : ''}</td>
+          <td>${esc(u.email)}</td>
+          <td><span class="role ${u.role === 'admin' ? 'admin' : 'staff'}">${u.role === 'admin' ? 'Admin' : 'Staff'}</span></td>
+          <td>${u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '<span class="muted">Never</span>'}</td>
+          <td class="acts">
+            <button class="btn btn-sm" data-act="pw">Reset password</button>
+            ${u.is_me ? '' : `<button class="btn btn-sm" data-act="role">${u.role === 'admin' ? 'Make staff' : 'Make admin'}</button>
+            <button class="icon-btn" data-act="del" title="Remove access" style="color:#b3261e">${icon.del}</button>`}
+          </td></tr>`).join('')}</tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>How your team logs in</h3></div>
+        <div class="info-box">
+          1. Add the person above with their email and a starting password.<br>
+          2. Send them the app link: <b>${esc(appUrl)}</b> <button class="btn btn-sm" id="t-copy" style="margin-left:6px">Copy link</button><br>
+          3. They log in on their phone or computer. On a phone, use the browser menu → <b>Add to Home screen</b> to install it like an app.<br><br>
+          <b>Admin</b> can do everything. <b>Staff</b> can make and edit bills, record payments and manage customers &amp; products, but cannot delete bills or change company settings, signature, stamp or team.
+        </div>
+      </div>`;
+    $('#t-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText(appUrl); toast('Link copied'); } catch (_) { toast(appUrl); } });
+    $('#t-add').addEventListener('click', () => {
+      const pw = 'KPE@' + Math.floor(1000 + Math.random() * 9000) + String.fromCharCode(97 + Math.floor(Math.random() * 26)) + String.fromCharCode(97 + Math.floor(Math.random() * 26));
+      const box = openModal(`
+        <div class="modal-h"><h3>Add a person</h3><button class="icon-btn" data-close>✕</button></div>
+        <form class="grid g2">
+          <label class="fld span2"><span>Name</span><input class="input" name="full_name" placeholder="e.g. Rohit (counter)"></label>
+          <label class="fld span2"><span>Email (used to log in) *</span><input class="input" name="email" type="email" required autocomplete="off"></label>
+          <label class="fld"><span>Starting password *</span><input class="input" name="password" type="text" minlength="8" required autocomplete="off" value="${pw}"></label>
+          <label class="fld"><span>Role</span><select class="select input" name="role"><option value="staff">Staff</option><option value="admin">Admin</option></select></label>
+          <p class="muted span2" style="margin:0;font-size:12px">Share the email and password with them. They can change the password after logging in (My account).</p>
+          <div class="span2" style="display:flex;gap:10px;justify-content:flex-end"><button type="button" class="btn" data-close>Cancel</button><button class="btn btn-primary">Create login</button></div>
+        </form>`, 'sm');
+      $('form', box).addEventListener('submit', async (e) => {
+        e.preventDefault(); const f = e.target, btn = $('button.btn-primary', f); btn.disabled = true;
+        try { await DB.team('create', { email: f.email.value, password: f.password.value, role: f.role.value, full_name: f.full_name.value.trim() }); closeModal(); toast(`Login created for ${f.email.value}`); route(); }
+        catch (er) { fail(er); btn.disabled = false; }
+      });
     });
+    page.addEventListener('click', async (e) => {
+      const act = e.target.closest('[data-act]')?.dataset.act; if (!act) return;
+      const email = e.target.closest('tr').dataset.email, u = users.find((x) => x.email === email);
+      try {
+        if (act === 'del' && await confirmBox('Remove access?', `${email} will no longer be able to log in. Bills they made are kept.`, 'Remove')) { await DB.team('remove', { email }); toast('Access removed'); route(); }
+        if (act === 'role') { await DB.team('set_role', { email, role: u.role === 'admin' ? 'staff' : 'admin' }); toast('Role updated'); route(); }
+        if (act === 'pw') {
+          const box = openModal(`
+            <div class="modal-h"><h3>New password for ${esc(email)}</h3><button class="icon-btn" data-close>✕</button></div>
+            <form class="grid"><label class="fld"><span>New password</span><input class="input" name="p" type="text" minlength="8" required autocomplete="off"></label>
+            <div style="display:flex;gap:10px;justify-content:flex-end"><button type="button" class="btn" data-close>Cancel</button><button class="btn btn-primary">Set password</button></div></form>`, 'sm');
+          $('form', box).addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            try { await DB.team('set_password', { email, password: ev.target.p.value }); closeModal(); toast('Password updated'); } catch (er) { fail(er); }
+          });
+        }
+      } catch (er) { fail(er); }
+    });
+  }
+
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   }
 
   /* =========================== BOOT =========================== */

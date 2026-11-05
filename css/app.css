@@ -10,6 +10,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 [hidden] { display: none !important; }
+body:not(.is-admin) .admin-only { display: none !important; }
 svg { width: 20px; height: 20px; flex: none; }
 a { color: inherit; }
 
@@ -253,3 +254,10 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
   #print-area { display: block !important; }
   #print-area .inv { box-shadow: none !important; margin: 0; }
 }
+
+/* ---------- Team ---------- */
+.role { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 11.5px; font-weight: 600; }
+.role.admin { background: #fbf2dc; color: #8a6514; }
+.role.staff { background: #e8f3df; color: #3f6b2b; }
+.by { font-size: 11.5px; color: #8a8f88; }
+.info-box { background: #f1f6ec; border: 1px solid #d5e6c6; border-radius: 12px; padding: 12px 14px; font-size: 13px; color: #3f5a33; line-height: 1.6; }

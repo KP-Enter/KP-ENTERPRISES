@@ -120,3 +120,37 @@ grant execute on function public.next_bill_no() to authenticated;
 -- To give another staff member access:
 --   1. Supabase dashboard → Authentication → Users → Add user (email + password)
 --   2. insert into public.allowed_users (email) values ('their@email.com');
+
+-- ===================== Roles (admin / staff) — applied as migration kpe_roles =====================
+alter table public.allowed_users add column if not exists full_name text;
+alter table public.allowed_users add constraint allowed_users_role_chk check (role in ('admin','staff'));
+
+create or replace function public.is_admin()
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.allowed_users where lower(email) = lower(auth.jwt() ->> 'email') and role = 'admin');
+$$;
+create or replace function public.my_role()
+returns text language sql stable security definer set search_path = public as $$
+  select role from public.allowed_users where lower(email) = lower(auth.jwt() ->> 'email');
+$$;
+revoke execute on function public.is_admin() from public, anon;
+revoke execute on function public.my_role() from public, anon;
+grant execute on function public.is_admin() to authenticated;
+grant execute on function public.my_role() to authenticated;
+
+drop policy if exists "allowed read self" on public.allowed_users;
+create policy "team read" on public.allowed_users for select to authenticated
+  using (public.is_admin() or lower(email) = lower(auth.jwt() ->> 'email'));
+
+drop policy if exists "allowed all" on public.company_settings;
+create policy "settings read" on public.company_settings for select to authenticated using (public.is_allowed());
+create policy "settings write" on public.company_settings for update to authenticated using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "allowed all" on public.bills;
+create policy "bills read" on public.bills for select to authenticated using (public.is_allowed());
+create policy "bills insert" on public.bills for insert to authenticated with check (public.is_allowed());
+create policy "bills update" on public.bills for update to authenticated using (public.is_allowed()) with check (public.is_allowed());
+create policy "bills delete" on public.bills for delete to authenticated using (public.is_admin());
+
+-- Team logins are created from the app (Team page) through the edge function
+-- supabase/functions/manage-users, which is deployed to the project.

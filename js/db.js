@@ -17,6 +17,19 @@
     changePassword: (password) => sb.auth.updateUser({ password }).then(must),
     onAuth: (cb) => sb.auth.onAuthStateChange(cb),
     isAllowed: async () => !!must(await sb.rpc('is_allowed')),
+    myRole: async () => must(await sb.rpc('my_role')) || null,
+
+    // ---------- team (admin only, via the manage-users edge function) ----------
+    team: async (action, payload = {}) => {
+      const { data, error } = await sb.functions.invoke('manage-users', { body: { action, ...payload } });
+      if (error) {
+        let msg = error.message;
+        try { const j = await error.context.json(); if (j?.error) msg = j.error; } catch (_) { /* keep generic */ }
+        throw new Error(msg);
+      }
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
 
     // ---------- settings ----------
     getSettings: async () => must(await sb.from('company_settings').select('*').eq('id', 1).maybeSingle()) || {},
@@ -46,7 +59,7 @@
 
     // ---------- bills ----------
     bills: async ({ q, from, to, status, limit } = {}) => {
-      let qry = sb.from('bills').select('id,bill_no,bill_date,customer_name,customer_phone,customer_id,grand_total,paid,balance,total_qty,created_at')
+      let qry = sb.from('bills').select('id,bill_no,bill_date,customer_name,customer_phone,customer_id,grand_total,paid,balance,total_qty,created_by,created_at')
         .order('bill_date', { ascending: false }).order('created_at', { ascending: false });
       if (from) qry = qry.gte('bill_date', from);
       if (to) qry = qry.lte('bill_date', to);

@@ -20,13 +20,23 @@ It is a static site — no build step.
 
 **Locally:** `python3 -m http.server 8080` in this folder, then open http://localhost:8080.
 
-## Login
+## Login & team (use it from anywhere)
 
-The admin account is the business email (`12shivasinghh@gmail.com`). Change the starting password
-after the first login: **Settings → Change password**.
+The app runs in any browser and saves straight to Supabase, so everyone with a login sees the same
+bills from any phone, tablet or computer.
 
-Only emails listed in the `allowed_users` table can see or create bills (enforced by Supabase Row
-Level Security). To add a staff member, see the bottom of `supabase/schema.sql`.
+- The admin account is the business email (`12shivasinghh@gmail.com`). Change the starting password
+  after the first login: **Settings → Change password**.
+- **Team page (admin):** add a person with email + starting password, choose **Admin** or **Staff**,
+  reset passwords, or remove access. Send them the app link — that's all they need.
+- **Staff** can make and edit bills, record payments, manage customers & products.
+  They cannot delete bills or change company details, signature, stamp or the team.
+- Each bill shows who made it.
+- **Install on a phone:** open the link → browser menu → *Add to Home screen*.
+
+Security is enforced inside Supabase (Row Level Security), not just in the app: only emails in
+`allowed_users` can read or write anything, and admin-only actions are checked by the database and
+by the `manage-users` edge function.
 
 For the "Forgot password?" email link to come back to the app, add the site URL in Supabase →
 Authentication → URL Configuration (Site URL and Redirect URLs).
@@ -44,7 +54,9 @@ Authentication → URL Configuration (Site URL and Redirect URLs).
 | `js/invoice.js` | Bill renderer |
 | `js/db.js` | Supabase data access |
 | `js/app.js` | Pages: dashboard, new/edit bill, bills, customers, products, settings |
-| `supabase/schema.sql` | Database tables, security policies and functions |
+| `supabase/schema.sql` | Database tables, roles, security policies and functions |
+| `supabase/functions/manage-users/` | Edge function used by the Team page to create / remove logins |
+| `manifest.webmanifest`, `sw.js` | Lets phones install the app to the home screen |
 | `vendor/` | supabase-js and html2pdf.js (bundled so the app does not depend on a CDN) |
 
 ## How GST is calculated
