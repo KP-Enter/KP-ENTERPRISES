@@ -16,7 +16,8 @@
     });
     const showSign = opts.sign ?? co.show_sign !== false;
     const showStamp = opts.stamp ?? co.show_stamp !== false;
-    const stampSrc = co.stamp || window.U.makeStamp(co.name || 'K.P. ENTERPRISES');
+    const stampSrc = co.stamp || window.U.makeProprietorStamp();
+    const wideStamp = window.U.isWideImage(stampSrc);
 
     const cols = `<colgroup><col class="c-no"><col class="c-name"><col class="c-hsn"><col class="c-qty"><col class="c-unit"><col class="c-rate"><col class="c-gst"><col class="c-amt"></colgroup>`;
 
@@ -111,7 +112,7 @@
 
   <div class="inv-sign">
     <div class="for">For :${esc(co.name || 'K.P. ENTERPRISES')}</div>
-    <div class="area">
+    <div class="area${wideStamp ? ' wide' : ''}">
       ${showStamp ? `<img class="stamp" src="${esc(stampSrc)}" alt="">` : ''}
       ${showSign && co.signature ? `<img class="sig" src="${esc(co.signature)}" alt="">` : ''}
     </div>

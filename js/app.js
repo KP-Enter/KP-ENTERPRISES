@@ -985,14 +985,14 @@
             </div>
           </div>
           <div class="card" style="margin:0">
-            <div class="card-h"><h3>Stamp</h3><span class="muted" style="font-size:12px">Upload your rubber stamp or use the generated one</span></div>
+            <div class="card-h"><h3>Stamp</h3><span class="muted" style="font-size:12px">Your K.P. Enterprises proprietor stamp is used by default — or upload your own</span></div>
             <div class="grid g2">
               <div><div class="asset-box" id="stamp-box"></div>
-                <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><label class="btn btn-sm">Upload stamp<input type="file" accept="image/*" id="stamp-file" hidden></label><button type="button" class="btn btn-sm" id="stamp-reset">Use generated</button></div></div>
+                <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><label class="btn btn-sm">Upload stamp<input type="file" accept="image/*" id="stamp-file" hidden></label><button type="button" class="btn btn-sm" id="stamp-reset">Use KPE stamp</button></div></div>
               <div class="grid" style="align-content:start">
-                <label class="fld"><span>Stamp place text</span><input class="input" id="stamp-place" value="SANDILA, HARDOI (U.P.)"></label>
-                <label class="fld"><span>Ink colour</span><input type="color" class="swatch" id="stamp-ink" value="#1d3fa6"></label>
-                <button type="button" class="btn btn-sm" id="stamp-gen">Generate stamp</button>
+                <label class="fld"><span>Round stamp place text</span><input class="input" id="stamp-place" value="SANDILA, HARDOI (U.P.)"></label>
+                <label class="fld"><span>Ink colour</span><input type="color" class="swatch" id="stamp-ink" value="#2b2f9e"></label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-sm" id="stamp-gen">Proprietor stamp in this ink</button><button type="button" class="btn btn-sm" id="stamp-round">Round stamp</button></div>
               </div>
             </div>
           </div>
@@ -1010,7 +1010,7 @@
     f.addEventListener('click', (e) => { const c = e.target.closest('[data-col]'); if (c) f.accent_color.value = c.dataset.col; });
 
     const showSig = () => { $('#sig-box').innerHTML = signature ? `<img src="${signature}" alt="signature">` : '<span class="muted">No signature yet</span>'; };
-    const showStamp = () => { $('#stamp-box').innerHTML = `<img src="${stamp || U.makeStamp(f.name.value || 'K.P. ENTERPRISES', $('#stamp-place').value)}" alt="stamp" style="max-height:140px">`; };
+    const showStamp = () => { $('#stamp-box').innerHTML = `<img src="${stamp || U.makeProprietorStamp()}" alt="stamp" style="max-height:140px;max-width:100%">`; };
     showSig(); showStamp();
 
     // signature pad
@@ -1026,7 +1026,8 @@
     $('#sig-file').addEventListener('change', async (e) => { const file = e.target.files[0]; if (!file) return; try { signature = await processImage(file, 600); showSig(); toast('Signature uploaded — click Save settings'); } catch (er) { fail(er); } });
     $('#sig-remove').addEventListener('click', () => { signature = null; showSig(); });
     $('#stamp-file').addEventListener('change', async (e) => { const file = e.target.files[0]; if (!file) return; try { stamp = await processImage(file, 500); showStamp(); toast('Stamp uploaded — click Save settings'); } catch (er) { fail(er); } });
-    $('#stamp-gen').addEventListener('click', () => { stamp = U.makeStamp(f.name.value || 'K.P. ENTERPRISES', $('#stamp-place').value, $('#stamp-ink').value); showStamp(); });
+    $('#stamp-gen').addEventListener('click', () => { stamp = U.makeProprietorStamp($('#stamp-ink').value); showStamp(); });
+    $('#stamp-round').addEventListener('click', () => { stamp = U.makeStamp(f.name.value || 'K.P. ENTERPRISES', $('#stamp-place').value, $('#stamp-ink').value); showStamp(); });
     $('#stamp-reset').addEventListener('click', () => { stamp = null; showStamp(); });
 
     f.addEventListener('submit', async (e) => {
