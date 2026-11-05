@@ -120,8 +120,9 @@
       errEl.className = 'login-error'; errEl.textContent = '';
       btn.disabled = true; top.innerHTML = '<span class="spin"></span>';
       try {
-        await DB.login($('#login-email').value.trim(), $('#login-password').value);
+        const res = await DB.login($('#login-email').value.trim(), $('#login-password').value);
         if (!(await DB.isAllowed())) { await DB.logout(); throw new Error('This account is not authorised for K.P. Enterprises billing.'); }
+        await DB.afterLogin(res.user || res.session?.user || (await DB.session())?.user);
         $('#login-password').value = '';
         await enterApp();
       } catch (er) {
@@ -134,7 +135,7 @@
   /* =========================== APP SHELL =========================== */
   async function enterApp() {
     const sess = await DB.session();
-    S.user = sess?.user;
+    S.user = sess?.user || (await DB.cachedUser());
     $('#user-email').textContent = S.user?.email || '';
     $('#user-avatar').textContent = (S.user?.email || 'K')[0].toUpperCase();
     $('#login-view').hidden = true;
@@ -145,13 +146,45 @@
     S.isAdmin = S.role === 'admin';
     document.body.classList.toggle('is-admin', S.isAdmin);
     $('#user-role').textContent = S.isAdmin ? 'Administrator' : 'Staff';
+    // first time on this device: download everything once so it also works offline
+    if (!DB.status().lastSync && !(await DB.products()).length && navigator.onLine) {
+      $('#page').innerHTML = '<div class="card loading-row"><span class="spinner"></span><p class="muted">Getting your bills ready on this device…</p></div>';
+      await DB.sync();
+    } else DB.sync();
     try {
       [S.settings, S.products, S.customers] = await Promise.all([DB.getSettings(), DB.products(), DB.customers()]);
     } catch (e) { fail(e); }
     if (!location.hash || location.hash === '#') location.hash = '#/dashboard'; else route();
   }
 
-  $('#logout-btn').addEventListener('click', async () => { await DB.logout(); location.hash = ''; showLogin(); });
+  $('#logout-btn').addEventListener('click', async () => {
+    const n = await DB.pendingCount();
+    if (n && !(await confirmBox('Log out?', `${n} change${n > 1 ? 's are' : ' is'} still waiting for internet. They stay safely on this computer and will be sent to the records the next time someone logs in here.`, 'Log out', false))) return;
+    await DB.logout(); location.hash = ''; showLogin();
+  });
+
+  /* ---------- online / sync badge ---------- */
+  const badge = document.createElement('button');
+  badge.className = 'sync-badge'; badge.type = 'button'; badge.title = 'Click to sync now';
+  $('.topbar-actions').prepend(badge);
+  const ago = (t) => { if (!t) return ''; const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + ' h ago'; };
+  function drawBadge(st = DB.status()) {
+    const off = !st.online || !navigator.onLine;
+    badge.className = 'sync-badge ' + (st.syncing ? 'busy' : off ? 'off' : st.pending ? 'wait' : 'ok');
+    badge.innerHTML = `<i></i><span>${st.syncing ? 'Syncing…' : off ? (st.pending ? `Offline · ${st.pending} to sync` : 'Offline — working on this device') : st.pending ? `${st.pending} waiting to sync` : 'All saved · ' + ago(st.lastSync)}</span>`;
+  }
+  badge.addEventListener('click', () => DB.sync());
+  window.addEventListener('kpe-sync', (e) => drawBadge(e.detail));
+  setInterval(() => drawBadge(), 30000);
+  drawBadge();
+  window.addEventListener('kpe-sync-error', (e) => toast(e.detail, true));
+  // new data from other devices -> refresh lists and the page being viewed (never while editing a bill)
+  window.addEventListener('kpe-data', async (e) => {
+    if (!S.inApp) return;
+    [S.settings, S.products, S.customers] = await Promise.all([DB.getSettings(), DB.products(), DB.customers()]);
+    const page = location.hash.replace(/^#\/?/, '').split('/')[0] || 'dashboard';
+    if ((e.detail?.changed || e.detail?.removed) && ['dashboard', 'bills', 'customers', 'products'].includes(page) && $('#modal').hidden) route();
+  });
   $('#menu-btn').addEventListener('click', () => $('#app-view').classList.toggle('nav-open'));
   $('#side-backdrop').addEventListener('click', () => $('#app-view').classList.remove('nav-open'));
 
@@ -1065,7 +1098,7 @@
     });
   }
 
-  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   }
 
@@ -1085,7 +1118,10 @@
     });
     try {
       const sess = await DB.session();
-      if (sess && await DB.isAllowed().catch(() => false)) await enterApp(); else showLogin();
+      const cached = await DB.cachedUser();
+      if (sess && await DB.isAllowed().catch(() => false)) { await DB.afterLogin(sess.user); await enterApp(); }
+      else if (cached && (!sess || !navigator.onLine)) await enterApp(); // offline (or session refresh pending): keep working on this device
+      else showLogin();
     } catch (e) { showLogin(); }
     $('#boot').classList.add('done');
     setTimeout(() => $('#boot').remove(), 500);

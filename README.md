@@ -60,6 +60,20 @@ Authentication → URL Configuration (Site URL and Redirect URLs).
 | `js/hsn-search.js`, `data/hsn.json` | HSN/SAC directory and the search that fills codes automatically |
 | `vendor/` | supabase-js and html2pdf.js (bundled so the app does not depend on a CDN) |
 
+## Works offline
+
+Each device keeps a copy of all bills, customers, products and settings (IndexedDB) and the app
+files (service worker). With no internet you can still open the app, make and edit bills, print /
+download PDFs and record payments. Changes wait in a queue and are sent to Supabase automatically
+when the internet returns (also every minute, and when the app comes back to the screen); changes
+from other devices are pulled in at the same time. The badge at the top shows *All saved*,
+*Offline* or *N waiting to sync* — click it to sync now.
+
+- Bills made **online** use the normal series (`KPE/0001`). Bills made **offline** use this
+  device's own series (`KPE/D1-001`, `KPE/D2-001` …) so two offline devices can never clash.
+- The first login on a device needs internet. Changing passwords and the Team page need internet.
+- Logging out keeps unsynced changes on the device; they are sent at the next login there.
+
 ## Automatic HSN / SAC codes
 
 The app carries the full official HSN directory (12,600+ goods codes, CBIC/WCO list with HS-2022

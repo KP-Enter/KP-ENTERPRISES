@@ -278,3 +278,12 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .hsn-hit .k { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 6px; background: #e8f3df; color: #3f6b2b; }
 .hsn-hit .k.SAC { background: #fbf2dc; color: #8a6514; }
 .hsn-hit small { grid-column: 1 / -1; color: #8a8f88; font-size: 11px; line-height: 1.4; }
+
+/* ---------- Online / sync badge ---------- */
+.sync-badge { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 99px; border: 1px solid #ddd9cc; background: #fff; font: 500 12px 'Poppins', sans-serif; color: #4d4f50; cursor: pointer; margin-right: 8px; white-space: nowrap; }
+.sync-badge i { width: 8px; height: 8px; border-radius: 50%; background: #8fbf6a; box-shadow: 0 0 0 3px rgba(143,191,106,.25); }
+.sync-badge.off i { background: #e0a14a; box-shadow: 0 0 0 3px rgba(224,161,74,.25); }
+.sync-badge.off { border-color: #f0dcb5; background: #fffaf0; }
+.sync-badge.wait i { background: #e0a14a; }
+.sync-badge.busy i { background: #5f9441; animation: sunPulse 1s infinite; }
+@media (max-width: 860px) { .sync-badge span { display: none; } .sync-badge { padding: 0 10px; } }
