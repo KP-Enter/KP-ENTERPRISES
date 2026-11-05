@@ -46,6 +46,7 @@
 
     return `
 <div class="inv" style="--acc:${esc(co.accent_color || '#9893e6')}">
+  ${co.show_watermark !== false ? '<img class="inv-wm" src="assets/kpe-logo.png" alt="">' : ''}
   <div class="inv-head">
     <div class="inv-co">
       <h1>${esc(co.name || 'K.P. ENTERPRISES')}</h1>

@@ -904,6 +904,7 @@
             <label class="check"><input type="checkbox" name="round_off"> Round off total to nearest rupee</label>
             <label class="check"><input type="checkbox" name="show_sign"> Show signature by default</label>
             <label class="check"><input type="checkbox" name="show_stamp"> Show stamp by default</label>
+            <label class="check"><input type="checkbox" name="show_watermark"> Logo watermark on bill</label>
           </div>
           <div class="grid g2" style="margin-top:14px">
             <label class="fld"><span>Bank details (optional, printed on bill)</span><textarea class="input" name="bank_details" rows="3" placeholder="Bank: …&#10;A/c No: …&#10;IFSC: …"></textarea></label>
@@ -943,7 +944,7 @@
     const f = $('#set-form');
     ['name', 'gstin', 'address', 'phone', 'email', 'state', 'doc_title', 'party_label', 'bill_prefix', 'accent_color', 'bank_details', 'terms'].forEach((k) => { if (f[k]) f[k].value = st[k] ?? ''; });
     if (!f.accent_color.value || f.accent_color.value === '#000000') f.accent_color.value = st.accent_color || '#9893e6';
-    f.round_off.checked = st.round_off !== false; f.show_sign.checked = st.show_sign !== false; f.show_stamp.checked = st.show_stamp !== false;
+    f.show_watermark.checked = st.show_watermark !== false; f.round_off.checked = st.round_off !== false; f.show_sign.checked = st.show_sign !== false; f.show_stamp.checked = st.show_stamp !== false;
     f.addEventListener('click', (e) => { const c = e.target.closest('[data-col]'); if (c) f.accent_color.value = c.dataset.col; });
 
     const showSig = () => { $('#sig-box').innerHTML = signature ? `<img src="${signature}" alt="signature">` : '<span class="muted">No signature yet</span>'; };
@@ -971,7 +972,7 @@
       const patch = {};
       ['name', 'gstin', 'address', 'phone', 'email', 'state', 'doc_title', 'party_label', 'bill_prefix', 'accent_color', 'bank_details', 'terms'].forEach((k) => { patch[k] = f[k].value.trim(); });
       patch.gstin = patch.gstin.toUpperCase();
-      Object.assign(patch, { round_off: f.round_off.checked, show_sign: f.show_sign.checked, show_stamp: f.show_stamp.checked, signature, stamp });
+      Object.assign(patch, { show_watermark: f.show_watermark.checked, round_off: f.round_off.checked, show_sign: f.show_sign.checked, show_stamp: f.show_stamp.checked, signature, stamp });
       const btn = $('#set-save'); btn.disabled = true;
       try { S.settings = await DB.saveSettings(patch); toast('Settings saved'); } catch (er) { fail(er); } finally { btn.disabled = false; }
     });

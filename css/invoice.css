@@ -11,6 +11,7 @@
   font-size: 10.5px; line-height: 1.45;
   display: flex; flex-direction: column;
   box-sizing: border-box;
+  position: relative; overflow: hidden;
   -webkit-print-color-adjust: exact; print-color-adjust: exact;
 }
 .inv * { box-sizing: border-box; }
@@ -80,3 +81,14 @@
 .inv-sign .sig { position: relative; max-height: 58px; max-width: 150px; object-fit: contain; z-index: 1; transform: translate(34px, 2px) rotate(-3deg); }
 .inv-sign .lbl { font-weight: 700; margin-top: 2px; }
 .inv-foot-note { margin-top: 10px; text-align: center; color: #666; font-size: 9.5px; }
+
+/* Faint KP Enterprises logo watermark in the middle of the page */
+.inv-wm {
+  position: absolute; left: 50%; top: 50%;
+  width: 125mm; height: auto;
+  transform: translate(-50%, -46%);
+  opacity: .075;
+  pointer-events: none; user-select: none;
+  z-index: 0;
+}
+.inv > *:not(.inv-wm) { position: relative; z-index: 1; }
