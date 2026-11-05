@@ -99,6 +99,34 @@
   U.UNITS = ['Pcs', 'Nos', 'Unit', 'Set', 'Bdl', 'Box', 'Kg', 'Mtr', 'Ft', 'Ltr', 'Kw', 'Pair', 'Roll', 'Job'];
   U.GST_RATES = [0, 0.25, 3, 5, 12, 18, 28];
 
+  /* ---------------- HSN / SAC from item name ----------------
+     First match wins, so the more specific rules come first.
+     Spellings used on K.P. Enterprises bills (INVETER, PANAL, STRUCER) are included. */
+  const HSN_RULES = [
+    [/\b(install|installation|fitting|labour|labor|commissioning|service charge|services?)\b/, '9954'],      // SAC: installation / works
+    [/\b(transport|freight|delivery|cartage)\b/, '9965'],                                                 // SAC: goods transport
+    [/(lithium|li-?ion|lifepo|\blfp\b)/, '85076000'],                                                    // lithium-ion battery
+    [/(battery|batt\b|batery|tubular)/, '85072000'],                                                     // lead-acid battery
+    [/(panel|panal|pannel|module|\bpv\b|mono ?perc|bifacial|topcon|\bdcr\b|solar plate)/, '85414300'],   // solar PV modules
+    [/(inverter|inveter|invertor|invertar|\bpcu\b|\bups\b|mppt|charge controller|controller)/, '85044090'], // static converters
+    [/(alumin)/, '76109090'],                                                                             // aluminium structure
+    [/(structure|strucer|structer|struc|mounting|\bmms\b|\bstand\b|gi pipe|channel|frame)/, '73089090'],     // steel structure
+    [/(cable|wire|\bdc wire|\bac wire)/, '8544'],                                                         // cables & wires
+    [/(acdb|dcdb|distribution box|\bdb\b|combiner|junction box|\bajb\b)/, '8537'],                       // distribution boxes
+    [/(\bmcb\b|mccb|isolator|switch|fuse|\bspd\b|connector|\bmc4\b|\brccb\b)/, '8536'],                  // switchgear / connectors
+    [/(lightning|arrester|arrestor|earthing|earth kit|\bla\b)/, '8535'],                                  // lightning arrester / earthing
+    [/(net meter|meter)/, '9028'],                                                                        // electricity meter
+    [/(pump)/, '8413'],                                                                                   // solar pump
+    [/(water heater|geyser)/, '8419'],                                                                    // solar water heater
+    [/(street ?light|light|lamp|lantern)/, '9405'],                                                       // solar lights
+    [/(nut|bolt|screw|fastener|hardware|clamp|washer|anchor)/, '7318'],                                  // fasteners / hardware
+  ];
+  U.guessHsn = (name) => {
+    const n = ' ' + String(name || '').toLowerCase() + ' ';
+    for (const [re, code] of HSN_RULES) if (re.test(n)) return code;
+    return '';
+  };
+
   /* ---------------- Default round stamp (SVG data URL) ---------------- */
   U.makeStamp = (company = 'K.P. ENTERPRISES', place = 'SANDILA, HARDOI', color = '#1d3fa6') => {
     const c = U.esc(color);

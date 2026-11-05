@@ -1,6 +1,6 @@
 /* K.P. ENTERPRISES — Billing app controller */
 (function () {
-  const { esc, money, moneyShort, num, r2, dmy, today, calcBill, calcLine, rateFromAmount, STATES, UNITS, GST_RATES } = window.U;
+  const { esc, money, moneyShort, num, r2, dmy, today, calcBill, calcLine, rateFromAmount, guessHsn, STATES, UNITS, GST_RATES } = window.U;
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 
@@ -414,7 +414,7 @@
     let d;
     if (args[0] && location.hash.startsWith('#/edit')) {
       const b = await DB.bill(args[0]);
-      d = { ...b, items: (b.items || []).map((i) => ({ ...blankItem(), ...i })) };
+      d = { ...b, items: (b.items || []).map((i) => ({ ...blankItem(), ...i, hsnManual: !!i.hsn })) };
     } else {
       d = { bill_no: '', bill_date: today(), customer_id: null, customer_name: '', customer_address: '', customer_phone: '', customer_gstin: '', place_of_supply: S.settings.state || '09-Uttar Pradesh', items: [blankItem()], paid: 0, notes: '' };
       if (args[0] === 'c' && args[1]) {
@@ -514,7 +514,7 @@
           <button class="icon-btn del" data-del title="Remove item">${icon.del}</button>
         </div>
         <div class="ir-fields">
-          <label><span>HSN/SAC</span><input class="input" data-k="hsn" value="${esc(it.hsn || '')}"></label>
+          <label><span>HSN/SAC <small style="color:#5f9441">auto</small></span><input class="input" data-k="hsn" value="${esc(it.hsn || '')}" placeholder="auto" title="Filled automatically from the item name — type to override"></label>
           <label><span>Qty</span><input class="input r" data-k="qty" type="number" step="any" min="0" value="${esc(it.qty)}"></label>
           <label><span>Unit</span><input class="input" data-k="unit" list="dl-unit" value="${esc(it.unit || '')}"></label>
           <label><span>Price / Unit</span><input class="input r" data-k="rate" type="number" step="any" min="0" value="${it.rate === '' ? '' : r2(it.rate)}"></label>
@@ -542,13 +542,16 @@
         it.name = v;
         const p = S.products.find((x) => x.name.toLowerCase() === v.trim().toLowerCase());
         if (p && !/^(insert|delete)(Text|Content)/.test(e.inputType || '')) {
-          Object.assign(it, { name: p.name, hsn: p.hsn || '', unit: p.unit || it.unit, rate: num(p.price), gst: num(p.gst_rate), incl: p.price_incl_tax !== false });
+          Object.assign(it, { name: p.name, hsn: p.hsn || guessHsn(p.name), hsnManual: false, unit: p.unit || it.unit, rate: num(p.price), gst: num(p.gst_rate), incl: p.price_incl_tax !== false });
           const i = +tr.dataset.i; tr.outerHTML = itemRow(it, i); refresh(); return;
         }
+        // HSN follows the item name unless the user typed their own
+        if (!it.hsnManual) { it.hsn = guessHsn(v); $('[data-k=hsn]', tr).value = it.hsn; }
       } else if (k === 'amount') { it.rate = v === '' ? '' : rateFromAmount(v, it); syncRow(tr, it, 'amount'); }
       else if (k === 'rate') { it.rate = v === '' ? '' : num(v); syncRow(tr, it, 'rate'); }
       else if (k === 'incl') { const keep = calcLine(it).amount; it.incl = v === '1'; if (it.rate !== '') it.rate = rateFromAmount(keep, it); syncRow(tr, it, 'amount'); }
       else if (k === 'qty' || k === 'gst') { it[k] = v === '' ? 0 : num(v); syncRow(tr, it); }
+      else if (k === 'hsn') { it.hsn = v; it.hsnManual = v.trim() !== ''; if (!it.hsnManual) { it.hsn = guessHsn(it.name); e.target.value = it.hsn; } }
       else it[k] = v;
       refresh();
     });
@@ -557,7 +560,7 @@
       if (e.target.dataset.k !== 'name') return;
       const tr = e.target.closest('.item-row'), i = +tr.dataset.i, it = d.items[i];
       const p = S.products.find((x) => x.name.toLowerCase() === it.name.trim().toLowerCase());
-      if (p && it.rate === '') { Object.assign(it, { name: p.name, hsn: p.hsn || '', unit: p.unit || it.unit, rate: num(p.price), gst: num(p.gst_rate), incl: p.price_incl_tax !== false }); tr.outerHTML = itemRow(it, i); refresh(); }
+      if (p && it.rate === '') { Object.assign(it, { name: p.name, hsn: p.hsn || guessHsn(p.name), hsnManual: false, unit: p.unit || it.unit, rate: num(p.price), gst: num(p.gst_rate), incl: p.price_incl_tax !== false }); tr.outerHTML = itemRow(it, i); refresh(); }
     });
     $('#items').addEventListener('click', (e) => {
       if (!e.target.closest('[data-del]')) return;
@@ -714,7 +717,12 @@
         <label class="check span2"><input type="checkbox" name="incl" ${p.price_incl_tax !== false ? 'checked' : ''}> Price includes GST</label>
         <div class="span2" style="display:flex;gap:10px;justify-content:flex-end"><button type="button" class="btn" data-close>Cancel</button><button class="btn btn-primary">Save</button></div>
       </form>`, 'sm');
-    $('form', box).addEventListener('submit', async (e) => {
+    const pf = $('form', box);
+    let hsnAuto = !p.hsn;
+    pf.hsn.placeholder = 'auto from name';
+    pf.name.addEventListener('input', () => { if (hsnAuto) pf.hsn.value = guessHsn(pf.name.value); });
+    pf.hsn.addEventListener('input', () => { hsnAuto = pf.hsn.value.trim() === ''; if (hsnAuto) pf.hsn.value = guessHsn(pf.name.value); });
+    pf.addEventListener('submit', async (e) => {
       e.preventDefault(); const f = e.target;
       try { await DB.saveProduct({ id: p.id, name: f.name.value.trim(), hsn: f.hsn.value.trim(), unit: f.unit.value.trim(), price: num(f.price.value), gst_rate: num(f.gst_rate.value), price_incl_tax: f.incl.checked }); closeModal(); toast('Product saved'); route(); }
       catch (er) { fail(/duplicate/i.test(er.message) ? new Error('A product with this name already exists') : er); }
