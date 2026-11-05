@@ -165,9 +165,9 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .ir-top { display: flex; align-items: center; gap: 8px; }
 .ir-no { width: 24px; height: 24px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 11.5px; font-weight: 600; color: #fff; background: linear-gradient(135deg, #8fbf6a, #5f9441); }
 .ir-name { font-weight: 500; }
-.ir-fields { display: grid; grid-template-columns: .9fr .7fr .8fr 1.2fr 1.05fr .85fr 1.3fr; gap: 6px; margin-top: 8px; }
+.ir-fields { display: grid; grid-template-columns: 1.25fr .6fr .75fr 1.15fr .9fr .8fr 1.25fr; gap: 6px; margin-top: 8px; }
 .ir-fields label { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.ir-fields span { font-size: 10.5px; color: #8a8f88; font-weight: 500; padding-left: 2px; }
+.ir-fields span { font-size: 10.5px; color: #8a8f88; font-weight: 500; padding-left: 2px; display: flex; align-items: center; justify-content: space-between; white-space: nowrap; }
 .ir-fields .input { height: 34px; font-size: 12.5px; padding: 0 7px; border-radius: 8px; min-width: 0; }
 .ir-fields .input.r { text-align: right; }
 .ir-fields .input.strong { font-weight: 600; }
@@ -261,3 +261,20 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .role.staff { background: #e8f3df; color: #3f6b2b; }
 .by { font-size: 11.5px; color: #8a8f88; }
 .info-box { background: #f1f6ec; border: 1px solid #d5e6c6; border-radius: 12px; padding: 12px 14px; font-size: 13px; color: #3f5a33; line-height: 1.6; }
+
+/* ---------- HSN finder ---------- */
+.hsn-find { border: 0; background: none; cursor: pointer; padding: 0 2px; font-size: 11px; line-height: 1; filter: grayscale(.2); }
+.hsn-find:hover { transform: scale(1.2); }
+.ir-foot { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-top: 4px; }
+.hsn-sugg { display: flex; flex-wrap: wrap; gap: 5px; min-height: 0; }
+.chip { border: 1px solid #ddd9cc; background: #fff; border-radius: 99px; padding: 2px 8px; font: 400 10.5px 'Poppins', sans-serif; color: #4d4f50; cursor: pointer; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.chip b { font-weight: 600; color: #2c302e; }
+.chip:hover { border-color: #8fbf6a; background: #f6faf2; }
+.chip.on { background: linear-gradient(135deg, #8fbf6a, #5f9441); border-color: transparent; color: #fff; }
+.chip.on b { color: #fff; }
+.hsn-results { max-height: 55vh; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
+.hsn-hit { text-align: left; border: 1px solid #ece9df; background: #fff; border-radius: 12px; padding: 9px 12px; cursor: pointer; display: grid; grid-template-columns: auto auto 1fr; gap: 2px 8px; align-items: center; font: 400 13px 'Poppins', sans-serif; color: #2c302e; }
+.hsn-hit:hover { border-color: #8fbf6a; background: #f6faf2; }
+.hsn-hit .k { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 6px; background: #e8f3df; color: #3f6b2b; }
+.hsn-hit .k.SAC { background: #fbf2dc; color: #8a6514; }
+.hsn-hit small { grid-column: 1 / -1; color: #8a8f88; font-size: 11px; line-height: 1.4; }

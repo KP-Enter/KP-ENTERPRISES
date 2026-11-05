@@ -125,6 +125,7 @@
     $('#login-view').hidden = true;
     $('#app-view').hidden = false;
     S.inApp = true;
+    setTimeout(() => hsnReady(), 1500); // load the HSN directory quietly in the background
     S.role = await DB.myRole().catch(() => 'staff');
     S.isAdmin = S.role === 'admin';
     document.body.classList.toggle('is-admin', S.isAdmin);
@@ -407,6 +408,50 @@
     await load();
   }
 
+  /* =========================== HSN helpers =========================== */
+  // Best HSN for a product name: checked solar list first, then the full HSN/SAC directory.
+  function hsnSuggestions(name, limit = 4) {
+    const out = [];
+    const cur = guessHsn(name);
+    const hits = window.HSN?.ready && String(name || '').trim().length > 1 ? HSN.search(name, { limit: 8 }) : [];
+    // a short family code (e.g. 8536) is upgraded to the exact 8-digit item when the directory finds one in that family
+    const exact = cur && cur.length <= 4 && !cur.startsWith('99') ? hits.find((r) => r.code.length === 8 && r.code.startsWith(cur)) : null;
+    if (exact) out.push({ code: exact.code, label: HSN.shortDesc(exact.desc), desc: exact.desc });
+    if (cur) out.push({ code: cur, label: exact ? 'Family code' : 'Recommended' });
+    if (hits.length) {
+      for (const r of hits) {
+        if (out.some((x) => x.code === r.code)) { const x = out.find((y) => y.code === r.code); x.label = HSN.shortDesc(r.desc); continue; }
+        out.push({ code: r.code, label: HSN.shortDesc(r.desc), desc: r.desc });
+        if (out.length >= limit) break;
+      }
+    }
+    return out.slice(0, limit);
+  }
+  const hsnReady = () => (window.HSN ? HSN.load().catch(() => null) : Promise.resolve(null));
+
+  function openHsnSearch(query, onPick) {
+    const box = openModal(`
+      <div class="modal-h"><h3>Find HSN / SAC code</h3><button class="icon-btn" data-close>✕</button></div>
+      <input class="input" id="hsn-q" placeholder="Type the product or service, e.g. solar panel, PVC pipe, installation" autocomplete="off">
+      <p class="muted" style="font-size:12px;margin:8px 2px">Searches the official HSN directory (12,600+ goods) and SAC list (services).</p>
+      <div class="hsn-results" id="hsn-res"><div class="loading-row"><span class="spinner"></span></div></div>`, 'sm');
+    const q = $('#hsn-q', box), res = $('#hsn-res', box);
+    q.value = query || '';
+    const draw = () => {
+      if (!HSN.ready) return;
+      const list = String(q.value).trim() ? HSN.search(q.value, { limit: 25 }) : [];
+      const cur = guessHsn(q.value);
+      if (cur && !list.some((r) => r.code === cur)) list.unshift({ code: cur, desc: 'Recommended for this item', kind: cur.length <= 6 && cur.startsWith('99') ? 'SAC' : 'HSN' });
+      res.innerHTML = list.length ? list.map((r) => `<button type="button" class="hsn-hit" data-code="${esc(r.code)}" title="${esc(r.desc)}">
+          <b>${esc(r.code)}</b><span class="k ${r.kind}">${r.kind}</span><span class="t">${esc(HSN.shortDesc(r.desc))}</span><small>${esc(r.desc.length > 160 ? r.desc.slice(0, 160) + '…' : r.desc)}</small></button>`).join('')
+        : `<div class="empty" style="padding:20px">${q.value.trim() ? 'No match — try a simpler word (e.g. "pump", "pipe", "fan")' : 'Type to search'}</div>`;
+    };
+    hsnReady().then(() => { if (!HSN.ready) { res.innerHTML = '<div class="empty">Could not load the HSN directory. Check your internet and try again.</div>'; return; } draw(); });
+    q.addEventListener('input', debounce(draw, 180));
+    res.addEventListener('click', (e) => { const b = e.target.closest('[data-code]'); if (b) { closeModal(); onPick(b.dataset.code); } });
+    setTimeout(() => { q.focus(); q.select(); }, 50);
+  }
+
   /* =========================== BILL EDITOR =========================== */
   const blankItem = () => ({ name: '', hsn: '', qty: 1, unit: 'Pcs', rate: '', gst: 0, incl: true });
 
@@ -514,7 +559,7 @@
           <button class="icon-btn del" data-del title="Remove item">${icon.del}</button>
         </div>
         <div class="ir-fields">
-          <label><span>HSN/SAC <small style="color:#5f9441">auto</small></span><input class="input" data-k="hsn" value="${esc(it.hsn || '')}" placeholder="auto" title="Filled automatically from the item name — type to override"></label>
+          <label><span>HSN/SAC <button type="button" class="hsn-find" data-find title="Search all HSN / SAC codes">🔍</button></span><input class="input" data-k="hsn" value="${esc(it.hsn || '')}" placeholder="auto" title="Filled automatically from the item name — type to override"></label>
           <label><span>Qty</span><input class="input r" data-k="qty" type="number" step="any" min="0" value="${esc(it.qty)}"></label>
           <label><span>Unit</span><input class="input" data-k="unit" list="dl-unit" value="${esc(it.unit || '')}"></label>
           <label><span>Price / Unit</span><input class="input r" data-k="rate" type="number" step="any" min="0" value="${it.rate === '' ? '' : r2(it.rate)}"></label>
@@ -522,10 +567,36 @@
           <label><span>GST</span><select class="select input" data-k="gst">${GST_RATES.map((g) => `<option value="${g}" ${num(it.gst) === g ? 'selected' : ''}>${g}%</option>`).join('')}${!GST_RATES.includes(num(it.gst)) ? `<option selected value="${num(it.gst)}">${num(it.gst)}%</option>` : ''}</select></label>
           <label><span>Amount</span><input class="input r strong" data-k="amount" type="number" step="any" min="0" value="${it.rate === '' ? '' : r2(l.amount)}"></label>
         </div>
-        <div class="line-sub" data-sub>${l.tax ? 'incl. GST ' + money(l.tax) : ''}</div>
+        <div class="ir-foot"><div class="hsn-sugg" data-sugg></div><div class="line-sub" data-sub>${l.tax ? 'incl. GST ' + money(l.tax) : ''}</div></div>
       </div>`;
     };
-    const renderItems = () => { $('#items').innerHTML = d.items.map(itemRow).join(''); refresh(); };
+    const drawSugg = (tr, it) => {
+      const box = $('[data-sugg]', tr); if (!box) return;
+      const list = it.name && it.name.trim().length > 1 ? hsnSuggestions(it.name, 3) : [];
+      box.innerHTML = list.length ? list.map((x) => `<button type="button" class="chip ${x.code === it.hsn ? 'on' : ''}" data-pick="${esc(x.code)}" title="${esc(x.desc || x.label)}"><b>${esc(x.code)}</b> ${esc(x.label.length > 24 ? x.label.slice(0, 24) + '…' : x.label)}</button>`).join('') : '';
+    };
+    const autoHsn = (tr, it) => {
+      if (!tr || !tr.isConnected) tr = $(`#items .item-row[data-i="${d.items.indexOf(it)}"]`);
+      if (!tr) return;
+      if (!it.hsnManual) {
+        const list = hsnSuggestions(it.name, 1);
+        it.hsn = list[0]?.code || '';
+        $('[data-k=hsn]', tr).value = it.hsn;
+      }
+      drawSugg(tr, it);
+      renderPreview();
+    };
+    const autoTimers = new WeakMap();
+    const autoHsnSoon = (tr, it) => {
+      clearTimeout(autoTimers.get(it));
+      if (!it.hsnManual) { it.hsn = guessHsn(it.name); $('[data-k=hsn]', tr).value = it.hsn; }
+      autoTimers.set(it, setTimeout(() => (HSN.ready ? autoHsn(tr, it) : hsnReady().then(() => autoHsn(null, it))), 350));
+    };
+    const renderItems = () => {
+      $('#items').innerHTML = d.items.map(itemRow).join('');
+      $$('#items .item-row').forEach((tr) => drawSugg(tr, d.items[+tr.dataset.i]));
+      refresh();
+    };
 
     const syncRow = (tr, it, skip) => {
       const l = calcLine(it);
@@ -542,16 +613,16 @@
         it.name = v;
         const p = S.products.find((x) => x.name.toLowerCase() === v.trim().toLowerCase());
         if (p && !/^(insert|delete)(Text|Content)/.test(e.inputType || '')) {
-          Object.assign(it, { name: p.name, hsn: p.hsn || guessHsn(p.name), hsnManual: false, unit: p.unit || it.unit, rate: num(p.price), gst: num(p.gst_rate), incl: p.price_incl_tax !== false });
-          const i = +tr.dataset.i; tr.outerHTML = itemRow(it, i); refresh(); return;
+          Object.assign(it, { name: p.name, hsn: p.hsn || guessHsn(p.name), hsnManual: !!p.hsn, unit: p.unit || it.unit, rate: num(p.price), gst: num(p.gst_rate), incl: p.price_incl_tax !== false });
+          const i = +tr.dataset.i; tr.outerHTML = itemRow(it, i); const row = $(`#items .item-row[data-i="${i}"]`); if (it.hsn) drawSugg(row, it); else autoHsnSoon(row, it); refresh(); return;
         }
-        // HSN follows the item name unless the user typed their own
-        if (!it.hsnManual) { it.hsn = guessHsn(v); $('[data-k=hsn]', tr).value = it.hsn; }
+        // HSN follows the item name unless the user typed or picked their own
+        autoHsnSoon(tr, it);
       } else if (k === 'amount') { it.rate = v === '' ? '' : rateFromAmount(v, it); syncRow(tr, it, 'amount'); }
       else if (k === 'rate') { it.rate = v === '' ? '' : num(v); syncRow(tr, it, 'rate'); }
       else if (k === 'incl') { const keep = calcLine(it).amount; it.incl = v === '1'; if (it.rate !== '') it.rate = rateFromAmount(keep, it); syncRow(tr, it, 'amount'); }
       else if (k === 'qty' || k === 'gst') { it[k] = v === '' ? 0 : num(v); syncRow(tr, it); }
-      else if (k === 'hsn') { it.hsn = v; it.hsnManual = v.trim() !== ''; if (!it.hsnManual) { it.hsn = guessHsn(it.name); e.target.value = it.hsn; } }
+      else if (k === 'hsn') { it.hsn = v; it.hsnManual = v.trim() !== ''; if (!it.hsnManual) autoHsn(tr, it); else drawSugg(tr, it); }
       else it[k] = v;
       refresh();
     });
@@ -560,9 +631,18 @@
       if (e.target.dataset.k !== 'name') return;
       const tr = e.target.closest('.item-row'), i = +tr.dataset.i, it = d.items[i];
       const p = S.products.find((x) => x.name.toLowerCase() === it.name.trim().toLowerCase());
-      if (p && it.rate === '') { Object.assign(it, { name: p.name, hsn: p.hsn || guessHsn(p.name), hsnManual: false, unit: p.unit || it.unit, rate: num(p.price), gst: num(p.gst_rate), incl: p.price_incl_tax !== false }); tr.outerHTML = itemRow(it, i); refresh(); }
+      if (p && it.rate === '') { Object.assign(it, { name: p.name, hsn: p.hsn || guessHsn(p.name), hsnManual: !!p.hsn, unit: p.unit || it.unit, rate: num(p.price), gst: num(p.gst_rate), incl: p.price_incl_tax !== false }); tr.outerHTML = itemRow(it, i); refresh(); }
     });
     $('#items').addEventListener('click', (e) => {
+      const tr = e.target.closest('.item-row');
+      const pick = e.target.closest('[data-pick]');
+      if (pick) { const it = d.items[+tr.dataset.i]; it.hsn = pick.dataset.pick; it.hsnManual = true; $('[data-k=hsn]', tr).value = it.hsn; dirty = true; drawSugg(tr, it); renderPreview(); return; }
+      if (e.target.closest('[data-find]')) {
+        e.preventDefault();
+        const i = +tr.dataset.i, it = d.items[i];
+        openHsnSearch(it.name, (code) => { it.hsn = code; it.hsnManual = true; dirty = true; const row = $(`#items .item-row[data-i="${i}"]`); if (row) { $('[data-k=hsn]', row).value = code; drawSugg(row, it); } renderPreview(); });
+        return;
+      }
       if (!e.target.closest('[data-del]')) return;
       const i = +e.target.closest('.item-row').dataset.i; d.items.splice(i, 1); if (!d.items.length) d.items.push(blankItem()); dirty = true; renderItems();
     });
@@ -720,8 +800,17 @@
     const pf = $('form', box);
     let hsnAuto = !p.hsn;
     pf.hsn.placeholder = 'auto from name';
-    pf.name.addEventListener('input', () => { if (hsnAuto) pf.hsn.value = guessHsn(pf.name.value); });
-    pf.hsn.addEventListener('input', () => { hsnAuto = pf.hsn.value.trim() === ''; if (hsnAuto) pf.hsn.value = guessHsn(pf.name.value); });
+    pf.hsn.insertAdjacentHTML('afterend', '<div class="hsn-sugg" id="pf-sugg" style="margin-top:6px"></div>');
+    const pfDraw = () => {
+      const list = hsnSuggestions(pf.name.value);
+      if (hsnAuto) pf.hsn.value = list[0]?.code || '';
+      $('#pf-sugg', box).innerHTML = list.map((x) => `<button type="button" class="chip ${x.code === pf.hsn.value ? 'on' : ''}" data-pick="${esc(x.code)}" title="${esc(x.desc || x.label)}"><b>${esc(x.code)}</b> ${esc(x.label.length > 30 ? x.label.slice(0, 30) + '…' : x.label)}</button>`).join('');
+    };
+    const pfSoon = debounce(() => hsnReady().then(pfDraw), 300);
+    pf.name.addEventListener('input', () => { if (hsnAuto) pf.hsn.value = guessHsn(pf.name.value); pfSoon(); });
+    pf.hsn.addEventListener('input', () => { hsnAuto = pf.hsn.value.trim() === ''; pfSoon(); });
+    box.addEventListener('click', (e) => { const b = e.target.closest('#pf-sugg [data-pick]'); if (b) { pf.hsn.value = b.dataset.pick; hsnAuto = false; pfDraw(); } });
+    if (p.name) pfSoon();
     pf.addEventListener('submit', async (e) => {
       e.preventDefault(); const f = e.target;
       try { await DB.saveProduct({ id: p.id, name: f.name.value.trim(), hsn: f.hsn.value.trim(), unit: f.unit.value.trim(), price: num(f.price.value), gst_rate: num(f.gst_rate.value), price_incl_tax: f.incl.checked }); closeModal(); toast('Product saved'); route(); }

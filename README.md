@@ -57,7 +57,19 @@ Authentication → URL Configuration (Site URL and Redirect URLs).
 | `supabase/schema.sql` | Database tables, roles, security policies and functions |
 | `supabase/functions/manage-users/` | Edge function used by the Team page to create / remove logins |
 | `manifest.webmanifest`, `sw.js` | Lets phones install the app to the home screen |
+| `js/hsn-search.js`, `data/hsn.json` | HSN/SAC directory and the search that fills codes automatically |
 | `vendor/` | supabase-js and html2pdf.js (bundled so the app does not depend on a CDN) |
+
+## Automatic HSN / SAC codes
+
+The app carries the full official HSN directory (12,600+ goods codes, CBIC/WCO list with HS-2022
+updates) and the SAC list for services in `data/hsn.json`. As you type an item name it fills the
+best code and shows other likely codes as chips; 🔍 opens a full search. Everyday words and brand
+names are understood ("Havells MCB" → 85362030, "submersible pump" → 84137010, "PVC pipe" → 3917…).
+Solar items use a hand-checked list first. A saved product's HSN always wins, and anything you type
+or pick yourself is kept. Rebuild the directory with `tools/build_hsn.py`.
+
+The suggestion is a starting point — confirm unusual items with your CA.
 
 ## How GST is calculated
 

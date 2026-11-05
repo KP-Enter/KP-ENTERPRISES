@@ -2,10 +2,10 @@
 // Lets phones install the app. Always tries the network first so staff get the latest version;
 // falls back to the saved copy of the app screens if the connection drops.
 // Bills themselves always go straight to Supabase (never cached here).
-const CACHE = 'kpe-shell-v2';
+const CACHE = 'kpe-shell-v3';
 const SHELL = [
   './', 'index.html', 'css/login.css', 'css/app.css', 'css/invoice.css',
-  'js/config.js', 'js/utils.js', 'js/invoice.js', 'js/db.js', 'js/app.js',
+  'js/config.js', 'js/utils.js', 'js/hsn-search.js', 'data/hsn.json', 'js/invoice.js', 'js/db.js', 'js/app.js',
   'vendor/supabase.min.js', 'vendor/html2pdf.bundle.min.js',
   'assets/kpe-logo.png', 'assets/kpe-mark.png', 'assets/favicon.png', 'assets/icon-192.png',
 ];
