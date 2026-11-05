@@ -127,26 +127,30 @@
     return '';
   };
 
-  /* ---------------- Default round stamp (SVG data URL) ---------------- */
-  U.makeStamp = (company = 'K.P. ENTERPRISES', place = 'SANDILA, HARDOI', color = '#1d3fa6') => {
+  /* ---------------- Default round stamp (crisp SVG data URL) ---------------- */
+  U.makeStamp = (company = 'K.P. ENTERPRISES', place = 'SANDILA, HARDOI (U.P.)', color = '#22389a') => {
     const c = U.esc(color);
+    const rays = Array.from({ length: 12 }, (_, i) => {
+      const a = (i * 30 - 90) * Math.PI / 180, r1 = 15, r2 = i % 2 ? 21 : 24;
+      return `<line x1="${(110 + r1 * Math.cos(a)).toFixed(1)}" y1="${(100 + r1 * Math.sin(a)).toFixed(1)}" x2="${(110 + r2 * Math.cos(a)).toFixed(1)}" y2="${(100 + r2 * Math.sin(a)).toFixed(1)}"/>`;
+    }).join('');
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" width="440" height="440">
 <defs>
-<path id="top" d="M 35 110 A 75 75 0 0 1 185 110"/>
-<path id="bot" d="M 30 110 A 80 80 0 0 0 190 110"/>
-<filter id="ink"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.25" result="m"/><feComposite in="SourceGraphic" in2="m" operator="in"/></filter>
+<path id="top" d="M 30 110 A 80 80 0 0 1 190 110"/>
+<path id="bot" d="M 24 110 A 86 86 0 0 0 196 110"/>
 </defs>
-<g fill="none" stroke="${c}" filter="url(#ink)">
-<circle cx="110" cy="110" r="104" stroke-width="5"/>
-<circle cx="110" cy="110" r="96" stroke-width="1.6"/>
-<circle cx="110" cy="110" r="56" stroke-width="1.6"/>
+<g fill="none" stroke="${c}" stroke-linecap="round">
+<circle cx="110" cy="110" r="105" stroke-width="5"/>
+<circle cx="110" cy="110" r="98.5" stroke-width="1.5"/>
+<circle cx="110" cy="110" r="60" stroke-width="2"/>
+<circle cx="110" cy="100" r="10" stroke-width="2.4"/>
+<g stroke-width="2.4">${rays}</g>
 </g>
-<g fill="${c}" font-family="Arial, Helvetica, sans-serif" font-weight="700" filter="url(#ink)">
-<text font-size="19" letter-spacing="1.5"><textPath href="#top" startOffset="50%" text-anchor="middle">${U.esc(company.toUpperCase())}</textPath></text>
-<text font-size="14" letter-spacing="2"><textPath href="#bot" startOffset="50%" text-anchor="middle" dominant-baseline="hanging">${U.esc(place.toUpperCase())}</textPath></text>
-<text x="32" y="116" font-size="16">★</text><text x="174" y="116" font-size="16">★</text>
-<text x="110" y="104" font-size="13" text-anchor="middle">AUTHORISED</text>
-<text x="110" y="122" font-size="13" text-anchor="middle">SIGNATORY</text>
+<g fill="${c}" font-family="Arial, Helvetica, sans-serif" font-weight="700" text-anchor="middle">
+<text font-size="20.5" letter-spacing="1.6"><textPath href="#top" startOffset="50%">${U.esc(company.toUpperCase())}</textPath></text>
+<text font-size="13.5" letter-spacing="1.4" dominant-baseline="hanging"><textPath href="#bot" startOffset="50%">${U.esc(place.toUpperCase())}</textPath></text>
+<text x="38" y="116" font-size="15">★</text><text x="182" y="116" font-size="15">★</text>
+<text x="110" y="140" font-size="10.5" letter-spacing=".8">SOLAR ENERGY</text>
 </g>
 </svg>`;
     return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));

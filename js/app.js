@@ -838,7 +838,7 @@
               <div><div class="asset-box" id="stamp-box"></div>
                 <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><label class="btn btn-sm">Upload stamp<input type="file" accept="image/*" id="stamp-file" hidden></label><button type="button" class="btn btn-sm" id="stamp-reset">Use generated</button></div></div>
               <div class="grid" style="align-content:start">
-                <label class="fld"><span>Stamp place text</span><input class="input" id="stamp-place" value="SANDILA, HARDOI"></label>
+                <label class="fld"><span>Stamp place text</span><input class="input" id="stamp-place" value="SANDILA, HARDOI (U.P.)"></label>
                 <label class="fld"><span>Ink colour</span><input type="color" class="swatch" id="stamp-ink" value="#1d3fa6"></label>
                 <button type="button" class="btn btn-sm" id="stamp-gen">Generate stamp</button>
               </div>

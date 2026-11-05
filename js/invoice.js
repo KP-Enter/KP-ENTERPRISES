@@ -16,7 +16,7 @@
     });
     const showSign = opts.sign ?? co.show_sign !== false;
     const showStamp = opts.stamp ?? co.show_stamp !== false;
-    const stampSrc = co.stamp || window.U.makeStamp(co.name || 'K.P. ENTERPRISES', 'SANDILA, HARDOI');
+    const stampSrc = co.stamp || window.U.makeStamp(co.name || 'K.P. ENTERPRISES');
 
     const cols = `<colgroup><col class="c-no"><col class="c-name"><col class="c-hsn"><col class="c-qty"><col class="c-unit"><col class="c-rate"><col class="c-gst"><col class="c-amt"></colgroup>`;
 
