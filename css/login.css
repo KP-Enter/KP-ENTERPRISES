@@ -30,8 +30,8 @@
   position: absolute; inset: 31%;
   border-radius: 50%;
   background: radial-gradient(circle, #fff3cf 0%, #f4d58d 30%, rgba(216,180,106,.45) 55%, rgba(216,180,106,0) 72%);
-  filter: blur(2px);
   animation: sunPulse 6s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 .sun-rays {
   position: absolute; inset: 0; border-radius: 50%;
@@ -39,6 +39,7 @@
   -webkit-mask: radial-gradient(circle, transparent 18%, #000 30%, transparent 68%);
           mask: radial-gradient(circle, transparent 18%, #000 30%, transparent 68%);
   animation: spin 90s linear infinite;
+  will-change: transform;
 }
 @keyframes sunRise { from { top: 95%; opacity: 0; } to { top: 62%; opacity: 1; } }
 @keyframes sunPulse { 50% { transform: scale(1.06); opacity: .85; } }
@@ -68,22 +69,19 @@
           mask: linear-gradient(to top, #000 30%, transparent 95%);
 }
 .panel-grid {
-  position: absolute; inset: 0;
+  position: absolute; left: 0; right: 0; top: -100px; bottom: 0;
   background-color: #12304a;
   background-image:
-    linear-gradient(115deg, rgba(243,215,154,.0) 40%, rgba(243,215,154,.35) 50%, rgba(243,215,154,0) 60%),
+    linear-gradient(115deg, rgba(243,215,154,0) 40%, rgba(243,215,154,.28) 50%, rgba(243,215,154,0) 60%),
     linear-gradient(#c9d6e0 3px, transparent 3px),
     linear-gradient(90deg, #c9d6e0 3px, transparent 3px),
     linear-gradient(rgba(140,180,220,.35) 1px, transparent 1px),
     linear-gradient(90deg, rgba(140,180,220,.35) 1px, transparent 1px);
-  background-size: 300% 100%, 160px 100px, 160px 100px, 40px 25px, 40px 25px;
-  animation: panelsMove 6s linear infinite, glint 7s ease-in-out infinite;
+  background-size: 100% 100%, 160px 100px, 160px 100px, 40px 25px, 40px 25px;
+  animation: panelsMove 6s linear infinite;
+  will-change: transform;
 }
-@keyframes panelsMove {
-  from { background-position: 0 0, 0 0, 0 0, 0 0, 0 0; }
-  to   { background-position: 0 0, 0 100px, 0 0, 0 25px, 0 0; }
-}
-@keyframes glint { 0%,100% { filter: brightness(.9); } 50% { filter: brightness(1.15); } }
+@keyframes panelsMove { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(0, 100px, 0); } }
 
 /* ---------- Drifting leaves ---------- */
 .leaves { position: absolute; inset: 0; pointer-events: none; transform-style: preserve-3d; }
@@ -94,6 +92,7 @@
   box-shadow: inset -2px -2px 0 rgba(0,0,0,.15);
   opacity: .85;
   animation: leafFall linear infinite;
+  will-change: transform;
 }
 .leaves i::after { content: ''; position: absolute; left: 50%; top: 10%; bottom: 10%; width: 1px; background: rgba(255,255,255,.5); transform: rotate(45deg); }
 .leaves i:nth-child(1) { left: 6%;  animation-duration: 14s; animation-delay: -2s; }
@@ -176,6 +175,7 @@
     0 0 40px rgba(243,215,154,.6);
   display: grid; place-items: center;
   animation: plateFloat 5s ease-in-out infinite;
+  will-change: transform;
   transform-style: preserve-3d;
 }
 .logo-mark {
@@ -276,12 +276,13 @@
 .btn3d:hover .btn3d-top { filter: brightness(1.05); }
 .btn3d:active .btn3d-top { inset: 5px 0 1px 0; }
 .btn3d-shine {
-  position: absolute; top: 0; bottom: 6px; left: -60%; width: 40%;
+  position: absolute; top: 0; bottom: 6px; left: 0; width: 40%;
   background: linear-gradient(100deg, transparent, rgba(255,255,255,.55), transparent);
-  transform: skewX(-20deg);
+  transform: translateX(-150%) skewX(-20deg);
   animation: shine 3.5s ease-in-out infinite;
+  will-change: transform;
 }
-@keyframes shine { 0%, 60% { left: -60%; } 100% { left: 130%; } }
+@keyframes shine { 0%, 60% { transform: translateX(-150%) skewX(-20deg); } 100% { transform: translateX(330%) skewX(-20deg); } }
 .btn3d[disabled] { cursor: progress; }
 .btn3d[disabled] .btn3d-top { filter: grayscale(.4) brightness(.95); }
 .btn3d .spin { width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
@@ -303,3 +304,8 @@
 @media (prefers-reduced-motion: reduce) {
   .login *, .login *::before, .login *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
+
+/* Lite mode for slower computers: same look, far fewer moving parts */
+.lite .sun-rays, .lite .panel-grid, .lite .orbit, .lite .logo-plate, .lite .btn3d-shine, .lite .stars, .lite .sun-core { animation: none !important; }
+.lite .leaves { display: none; }
+.lite .card3d { transition: none; }

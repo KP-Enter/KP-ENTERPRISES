@@ -53,7 +53,7 @@ a { color: inherit; }
 .topbar {
   position: sticky; top: 0; z-index: 20;
   display: flex; align-items: center; gap: 12px;
-  padding: 14px 28px; background: rgba(244,243,238,.88); backdrop-filter: blur(10px);
+  padding: 14px 28px; background: #f4f3ee;
   border-bottom: 1px solid #e6e3d8;
 }
 .topbar h2 { margin: 0; font-size: 20px; font-weight: 600; flex: 1; }
@@ -197,7 +197,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 
 /* ---------- Modal ---------- */
 .modal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 20px; }
-.modal-backdrop { position: absolute; inset: 0; background: rgba(15,24,20,.55); backdrop-filter: blur(3px); animation: fadeIn .2s; }
+.modal-backdrop { position: absolute; inset: 0; background: rgba(15,24,20,.62); animation: fadeIn .2s; }
 .modal-box {
   position: relative; width: min(980px, 100%); max-height: calc(100vh - 40px); overflow: auto;
   background: #f4f3ee; border-radius: 20px; padding: 22px;

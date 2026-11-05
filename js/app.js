@@ -71,8 +71,23 @@
   (function setupLogin() {
     $('#yr').textContent = new Date().getFullYear();
     const card = $('#login-card'), view = $('#login-view');
+    // Lite mode on slower computers (few CPU cores / little memory) or when asked with ?lite
+    const softwareGpu = (() => { // no graphics acceleration (old/blocked GPU driver) -> lite
+      try {
+        const gl = document.createElement('canvas').getContext('webgl');
+        if (!gl) return true;
+        const ext = gl.getExtension('WEBGL_debug_renderer_info');
+        const r = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : '';
+        return /swiftshader|basic render|llvmpipe|software/i.test(r);
+      } catch (_) { return true; }
+    })();
+    const weak = softwareGpu || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4 || /[?&]lite\b/.test(location.search);
+    try { if (weak || localStorage.getItem('kpe-lite') === '1') document.documentElement.classList.add('lite'); } catch (_) { if (weak) document.documentElement.classList.add('lite'); }
+    let tiltQueued = false;
     view.addEventListener('pointermove', (e) => {
-      if (e.pointerType !== 'mouse') return;
+      if (e.pointerType !== 'mouse' || tiltQueued || document.documentElement.classList.contains('lite')) return;
+      tiltQueued = true;
+      requestAnimationFrame(() => { tiltQueued = false; });
       const x = e.clientX / innerWidth - 0.5, y = e.clientY / innerHeight - 0.5;
       card.style.setProperty('--ry', (x * 18).toFixed(2) + 'deg');
       card.style.setProperty('--rx', (-y * 14 + 2).toFixed(2) + 'deg');
@@ -547,7 +562,7 @@
         <div class="bal"><span>Balance</span><span>${money(c.balance)}</span></div>`;
       return c;
     };
-    const renderPreview = debounce(() => mountPreview($('#preview'), renderInvoice(d, S.settings, signOpts(page))), 120);
+    const renderPreview = debounce(() => mountPreview($('#preview'), renderInvoice(d, S.settings, signOpts(page))), 280);
     const refresh = () => { renderTotals(); renderPreview(); };
 
     const itemRow = (it, i) => {
@@ -590,7 +605,8 @@
     const autoHsnSoon = (tr, it) => {
       clearTimeout(autoTimers.get(it));
       if (!it.hsnManual) { it.hsn = guessHsn(it.name); $('[data-k=hsn]', tr).value = it.hsn; }
-      autoTimers.set(it, setTimeout(() => (HSN.ready ? autoHsn(tr, it) : hsnReady().then(() => autoHsn(null, it))), 350));
+      const run = () => (HSN.ready ? autoHsn(tr, it) : hsnReady().then(() => autoHsn(null, it)));
+      autoTimers.set(it, setTimeout(() => (window.requestIdleCallback ? requestIdleCallback(run, { timeout: 800 }) : run()), 550));
     };
     const renderItems = () => {
       $('#items').innerHTML = d.items.map(itemRow).join('');
