@@ -1,5 +1,14 @@
 # KPE Billing — Windows desktop app
 
+**Recommended: the small installer** (`build/installer-lite.nsi`, 170 KB, published at
+`download/KPE-Billing-Setup.exe`). It uses Microsoft Edge — built into Windows 10/11 — to open the
+app in its own full-screen window with its own profile (stays logged in). Falls back to Chrome, then
+to the default browser. Build: `cd build && makensis installer-lite.nsi`.
+
+The full Electron app below is optional (≈112 MB).
+
+## Electron app
+
 A small Windows app that opens the live billing site (https://kp-enter.github.io/KP-ENTERPRISES/)
 full screen, without browser bars. All data stays in Supabase, so the desktop app, phones and
 browsers all see the same bills. The app updates itself whenever the website is updated.

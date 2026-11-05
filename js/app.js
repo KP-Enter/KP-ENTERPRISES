@@ -1021,7 +1021,8 @@
         <div class="info-box">
           1. Add the person above with their email and a starting password.<br>
           2. Send them the app link: <b>${esc(appUrl)}</b> <button class="btn btn-sm" id="t-copy" style="margin-left:6px">Copy link</button><br>
-          3. They log in on their phone or computer. On a phone, use the browser menu → <b>Add to Home screen</b> to install it like an app.<br><br>
+          3. They log in on their phone or computer. On a phone, use the browser menu → <b>Add to Home screen</b> to install it like an app.<br>
+          4. Windows computer: <a href="download/KPE-Billing-Setup.exe" download><b>Download the KPE Billing installer</b></a> (170 KB) — adds a full-screen KPE Billing app to the desktop.<br><br>
           <b>Admin</b> can do everything. <b>Staff</b> can make and edit bills, record payments and manage customers &amp; products, but cannot delete bills or change company settings, signature, stamp or team.
         </div>
       </div>`;
