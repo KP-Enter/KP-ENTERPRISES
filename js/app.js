@@ -18,7 +18,10 @@
   const fail = (e) => { console.error(e); toast(e.message || String(e), true); };
 
   function openModal(html, cls = '') {
-    const m = $('#modal'), box = $('#modal-box');
+    const m = $('#modal');
+    // fresh box every time, so click handlers from an earlier pop-up can never fire twice
+    const old = $('#modal-box'), box = old.cloneNode(false);
+    old.replaceWith(box);
     box.className = 'modal-box ' + cls;
     box.innerHTML = html;
     m.hidden = false;
@@ -605,7 +608,7 @@
         <div class="bal"><span>Balance</span><span>${money(c.balance)}</span></div>`;
       return c;
     };
-    const renderPreview = debounce(() => mountPreview($('#preview'), renderInvoice(d, S.settings, signOpts(page))), 280);
+    const renderPreview = debounce(() => { const el = $('#preview'); if (el && el.isConnected) mountPreview(el, renderInvoice(d, S.settings, signOpts(page))); }, 280);
     const refresh = () => { renderTotals(); renderPreview(); };
 
     const itemRow = (it, i) => {
