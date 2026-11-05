@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KPE Billing — offline</title>
+<style>
+  html, body { margin: 0; height: 100%; }
+  body { display: grid; place-items: center; font-family: 'Segoe UI', system-ui, sans-serif; color: #fff;
+    background: radial-gradient(120% 90% at 50% 100%, #2c3d2f 0%, #15241d 45%, #0d1a15 100%); }
+  .card { width: min(440px, 90vw); text-align: center; background: #faf8f0; color: #4d4f50; border-radius: 26px; padding: 34px 30px 28px;
+    box-shadow: 0 40px 80px -20px rgba(0,0,0,.7), 0 0 0 1px rgba(216,180,106,.4); }
+  img { width: 200px; }
+  h1 { font-size: 20px; margin: 16px 0 6px; color: #2c302e; }
+  p { margin: 0 0 22px; line-height: 1.55; font-size: 14px; color: #6b6d6a; }
+  button { border: 0; border-radius: 14px; padding: 13px 26px; font: 600 15px 'Segoe UI', sans-serif; color: #fff; cursor: pointer;
+    background: linear-gradient(135deg, #a3cf7f, #5f9441); box-shadow: 0 5px 0 #456f2f; }
+  button:active { transform: translateY(3px); box-shadow: 0 2px 0 #456f2f; }
+  small { display: block; margin-top: 16px; color: #9a9c95; font-size: 12px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #e0a14a; margin-right: 6px; animation: b 1.2s infinite; }
+  @keyframes b { 50% { opacity: .3; } }
+</style>
+</head>
+<body>
+  <div class="card">
+    <img src="logo.png" alt="K.P. Enterprises">
+    <h1>No internet connection</h1>
+    <p>KPE Billing needs the internet to open your bills and save new ones to your records.<br>Check the Wi-Fi or mobile hotspot and try again.</p>
+    <button onclick="location.href='https://kp-enter.github.io/KP-ENTERPRISES/'">Try again</button>
+    <small><span class="dot"></span>Reconnecting automatically…</small>
+  </div>
+</body>
+</html>

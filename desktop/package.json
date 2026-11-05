@@ -1,0 +1,60 @@
+{
+  "name": "kpe-billing",
+  "version": "1.0.0",
+  "description": "K.P. Enterprises billing \u2014 desktop app",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "author": "K.P. Enterprises",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "electron": "^45.2.3",
+    "electron-builder": "^26.18.0",
+    "resedit-cli": "^3.1.1"
+  },
+  "productName": "KPE Billing",
+  "build": {
+    "appId": "in.kpenterprises.billing",
+    "productName": "KPE Billing",
+    "copyright": "K.P. Enterprises",
+    "files": [
+      "main.js",
+      "offline.html",
+      "logo.png",
+      "build/icon.ico",
+      "build/icon.png"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "KPE Billing",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "KPE-Billing-Setup-${version}.exe",
+      "uninstallDisplayName": "KPE Billing"
+    }
+  }
+}

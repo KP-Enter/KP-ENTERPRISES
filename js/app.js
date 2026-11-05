@@ -563,7 +563,7 @@
           <label><span>Qty</span><input class="input r" data-k="qty" type="number" step="any" min="0" value="${esc(it.qty)}"></label>
           <label><span>Unit</span><input class="input" data-k="unit" list="dl-unit" value="${esc(it.unit || '')}"></label>
           <label><span>Price / Unit</span><input class="input r" data-k="rate" type="number" step="any" min="0" value="${it.rate === '' ? '' : r2(it.rate)}"></label>
-          <label><span>GST in price</span><select class="select input" data-k="incl"><option value="1" ${it.incl ? 'selected' : ''}>Incl.</option><option value="0" ${!it.incl ? 'selected' : ''}>Excl.</option></select></label>
+          <label><span>Tax in price</span><select class="select input" data-k="incl"><option value="1" ${it.incl ? 'selected' : ''}>Incl.</option><option value="0" ${!it.incl ? 'selected' : ''}>Excl.</option></select></label>
           <label><span>GST</span><select class="select input" data-k="gst">${GST_RATES.map((g) => `<option value="${g}" ${num(it.gst) === g ? 'selected' : ''}>${g}%</option>`).join('')}${!GST_RATES.includes(num(it.gst)) ? `<option selected value="${num(it.gst)}">${num(it.gst)}%</option>` : ''}</select></label>
           <label><span>Amount</span><input class="input r strong" data-k="amount" type="number" step="any" min="0" value="${it.rate === '' ? '' : r2(l.amount)}"></label>
         </div>
