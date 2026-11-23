@@ -194,7 +194,7 @@
   const refreshLists = async () => { try { [S.products, S.customers] = await Promise.all([DB.products(), DB.customers()]); } catch (e) { /* non fatal */ } };
 
   /* =========================== ROUTER =========================== */
-  const TITLES = { dashboard: 'Dashboard', new: 'New Bill', edit: 'Edit Bill', bills: 'All Bills', receipts: 'Receipt', customers: 'Customers', products: 'Products', team: 'Team', settings: 'Settings' };
+  const TITLES = { dashboard: 'Dashboard', new: 'New Bill', edit: 'Edit Bill', bills: 'All Bills', receipts: 'Payment Receipt', customers: 'Customers', products: 'Products', team: 'Team', settings: 'Settings' };
   let leaveGuard = null;
 
   function route() {
