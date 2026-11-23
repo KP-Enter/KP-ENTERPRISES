@@ -22,7 +22,7 @@
     const cols = '<colgroup><col class="r-no"><col class="r-desc"><col class="r-mode"><col class="r-ref"><col class="r-amt"></colgroup>';
     const desc = p.bill_no
       ? `Payment received against Bill No. ${esc(p.bill_no)}${p.bill_date ? ' dated ' + esc(dmy(p.bill_date)) : ''}`
-      : 'Payment received';
+      : (p.notes ? esc(p.notes) : 'Payment received');
 
     const sumRows = [
       ...(p.bill_no ? [['Bill Amount', money(total)]] : []),
@@ -86,7 +86,7 @@
     <div class="inv-words">
       <div class="h">Amount Received In Words</div>
       <p>${esc(amountInWords(amount))}</p>
-      ${p.notes ? `<div class="extra"><div class="h">Notes</div><p>${esc(p.notes)}</p></div>` : ''}
+      ${p.notes && p.bill_no ? `<div class="extra"><div class="h">Notes</div><p>${esc(p.notes)}</p></div>` : ''}
     </div>
     <div class="inv-sum">
       <table>

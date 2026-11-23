@@ -531,13 +531,64 @@
     await DB.deletePayment(pay.id); toast('Receipt deleted'); return true;
   }
 
+  // a receipt that is not against any bill: advance, old dues, any other money received
+  function freeReceipt(reload) {
+    const box = openModal(`
+      <div class="modal-h"><h3>New payment receipt</h3><button class="icon-btn" data-close>✕</button></div>
+      <form class="grid">
+        <label class="fld"><span>Received from (customer name)</span><input class="input" name="name" list="fr-cust" autocomplete="off" required>
+          <datalist id="fr-cust">${S.customers.map((c) => `<option value="${esc(c.name)}">`).join('')}</datalist></label>
+        <div class="grid g2">
+          <label class="fld"><span>Phone</span><input class="input" name="phone" inputmode="tel"></label>
+          <label class="fld"><span>Address</span><input class="input" name="address"></label>
+        </div>
+        <div class="grid g2">
+          <label class="fld"><span>Amount received (₹)</span><input class="input" name="amt" type="number" step="0.01" min="0.01" required></label>
+          <label class="fld"><span>Date</span><input class="input" name="date" type="date" value="${today()}" required></label>
+        </div>
+        <div class="grid g2">
+          <label class="fld"><span>Payment mode</span><select class="select input" name="mode">${PAY_MODES.map((m) => `<option>${esc(m)}</option>`).join('')}</select></label>
+          <label class="fld"><span>Reference no. (UTR / cheque no.)</span><input class="input" name="ref" placeholder="Optional"></label>
+        </div>
+        <label class="fld"><span>Received for (printed on receipt)</span><input class="input" name="notes" placeholder="e.g. Advance for solar installation"></label>
+        <div style="display:flex;gap:10px;justify-content:flex-end"><button type="button" class="btn" data-close>Cancel</button><button class="btn btn-primary">${icon.rupee}Save &amp; make receipt</button></div>
+      </form>`, 'sm');
+    const f = $('form', box);
+    let cust = null;
+    // picking a saved customer fills in phone and address
+    f.name.addEventListener('input', () => {
+      cust = S.customers.find((c) => c.name.trim().toLowerCase() === f.name.value.trim().toLowerCase()) || null;
+      if (cust) { if (!f.phone.value) f.phone.value = cust.phone || ''; if (!f.address.value) f.address.value = cust.address || ''; }
+    });
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const amt = r2(num(f.amt.value));
+      if (amt <= 0) { toast('Enter the amount received', true); return; }
+      const btn = $('.btn-primary', f); btn.disabled = true;
+      try {
+        const pay = await DB.savePayment({
+          receipt_no: await DB.nextReceiptNo(), pay_date: f.date.value || today(), bill_id: null, bill_no: null, bill_date: null,
+          customer_name: f.name.value.trim(), customer_address: f.address.value.trim() || null, customer_phone: f.phone.value.trim() || null, customer_gstin: cust?.gstin || null,
+          amount: amt, mode: f.mode.value, reference: f.ref.value.trim() || null, notes: f.notes.value.trim() || null,
+          bill_total: 0, balance_after: 0,
+        });
+        toast(`Receipt ${pay.receipt_no} saved`);
+        reload && reload();
+        viewReceipt(pay, reload);
+      } catch (er) { btn.disabled = false; fail(er); }
+    });
+    setTimeout(() => f.name.focus(), 50);
+  }
+
   // choose a bill to take a payment against (unpaid bills first)
   async function pickBillForPayment(reload) {
     const bills = await DB.bills({ limit: 5000 });
     const box = openModal(`
-      <div class="modal-h"><h3>New receipt — choose the bill</h3><button class="icon-btn" data-close>✕</button></div>
+      <div class="modal-h"><h3>New payment receipt — choose the bill</h3><button class="icon-btn" data-close>✕</button></div>
       <input class="input" id="pb-q" placeholder="Search customer, bill no. or phone" autocomplete="off">
-      <div class="pick-list" id="pb-list"></div>`, 'sm');
+      <div class="pick-list" id="pb-list"></div>
+      <button type="button" class="btn" id="pb-free" style="margin-top:12px;width:100%">${icon.plus}Receipt without a bill (advance / other payment)</button>`, 'sm');
+    $('#pb-free', box).addEventListener('click', () => freeReceipt(reload));
     const q = $('#pb-q', box), list = $('#pb-list', box);
     const draw = () => {
       const s = q.value.trim().toLowerCase();
@@ -566,7 +617,7 @@
           <label class="fld"><span>From</span><input class="input" type="date" id="r-from"></label>
           <label class="fld"><span>To</span><input class="input" type="date" id="r-to"></label>
           <button class="btn" id="r-csv">${icon.pdf}Export CSV</button>
-          <button class="btn btn-primary" id="r-new">${icon.plus}New receipt</button>
+          <button class="btn btn-primary" id="r-new">${icon.plus}New payment receipt</button>
         </div>
         <div id="r-sum" class="muted" style="font-size:12.5px;margin:-4px 0 8px"></div>
         <div id="r-list"><div class="loading-row"><span class="spinner"></span></div></div>
@@ -576,7 +627,7 @@
       current = await DB.payments({ q: $('#r-q').value, from: $('#r-from').value, to: $('#r-to').value });
       $('#r-sum').textContent = `${current.length} receipts · Received ${money(current.reduce((t, p) => t + num(p.amount), 0))}`;
       $('#r-list').innerHTML = !current.length
-        ? `<div class="empty">${icon.doc}No receipts yet. Open a bill and press <b>Record payment</b>, or use <b>New receipt</b> above.</div>`
+        ? `<div class="empty">${icon.doc}No receipts yet. Open a bill and press <b>Record payment</b>, or use <b>New payment receipt</b> above.</div>`
         : `<div class="table-wrap"><table class="tbl">
           <thead><tr><th>Receipt No.</th><th>Date</th><th>Customer</th><th>Bill No.</th><th>Mode</th><th class="num">Amount</th><th></th></tr></thead>
           <tbody>${current.map((p) => `
