@@ -44,7 +44,7 @@
     <img class="inv-logo" src="assets/kpe-logo.png" alt="">
   </div>
 
-  <div class="inv-title">Payment Receipt</div>
+  <div class="inv-title">Receipt</div>
 
   <div class="inv-parties">
     <div>
