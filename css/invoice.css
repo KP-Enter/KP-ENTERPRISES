@@ -94,3 +94,10 @@
   z-index: 0;
 }
 .inv > *:not(.inv-wm) { position: relative; z-index: 1; }
+
+/* Payment receipt — same page, its own column widths */
+.inv col.r-no   { width: 5%; }
+.inv col.r-desc { width: 44%; }
+.inv col.r-mode { width: 17%; }
+.inv col.r-ref  { width: 18%; }
+.inv col.r-amt  { width: 16%; }

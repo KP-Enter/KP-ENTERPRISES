@@ -11,14 +11,17 @@
   /* ------------------------------ IndexedDB ------------------------------ */
   let dbp = null;
   const open = () => dbp || (dbp = new Promise((res, rej) => {
-    const r = indexedDB.open('kpe-billing', 1);
+    const r = indexedDB.open('kpe-billing', 2); // v2 adds the payments (receipts) store
     r.onupgradeneeded = () => {
       const d = r.result;
-      ['bills', 'customers', 'products'].forEach((n) => d.createObjectStore(n, { keyPath: 'id' }));
-      d.createObjectStore('kv');
-      d.createObjectStore('outbox', { keyPath: 'seq', autoIncrement: true });
+      const mk = (n, o) => { if (!d.objectStoreNames.contains(n)) d.createObjectStore(n, o); };
+      ['bills', 'customers', 'products', 'payments'].forEach((n) => mk(n, { keyPath: 'id' }));
+      mk('kv');
+      mk('outbox', { keyPath: 'seq', autoIncrement: true });
     };
-    r.onsuccess = () => res(r.result);
+    // another tab still has the older version open: ask the user to close it
+    r.onblocked = () => window.dispatchEvent(new CustomEvent('kpe-sync-error', { detail: 'Please close other KPE Billing tabs/windows, then reload this page to finish the update.' }));
+    r.onsuccess = () => { r.result.onversionchange = () => { r.result.close(); dbp = null; }; res(r.result); };
     r.onerror = () => rej(r.error);
   }));
   const req = (store, mode, fn) => open().then((d) => new Promise((res, rej) => {
@@ -76,6 +79,8 @@
         if (op.t === 'bills' && /foreign key/i.test(e.message) && row.customer_id) { row = { ...row, customer_id: null }; await server(sb.from('bills').upsert(row, { onConflict: 'id' })); return; }
         // same customer / product already exists on the server -> nothing to do
         if ((op.t === 'customers' || op.t === 'products') && /duplicate key/i.test(e.message)) return;
+        // the bill of this receipt no longer exists -> keep the receipt, just unlink it
+        if (op.t === 'payments' && /foreign key/i.test(e.message) && row.bill_id) { row = { ...row, bill_id: null }; await server(sb.from('payments').upsert(row, { onConflict: 'id' })); return; }
         throw e;
       }
     } else if (op.k === 'patch') {
@@ -112,12 +117,13 @@
   /* ------------------------------ pull ------------------------------ */
   async function pull() {
     const pendingIds = new Set((await L.all('outbox')).map((o) => o.id || o.row?.id).filter(Boolean));
-    const [settings, products, customers, role, ids] = await Promise.all([
+    const [settings, products, customers, role, ids, payments] = await Promise.all([
       server(sb.from('company_settings').select('*').eq('id', 1).maybeSingle()),
       server(sb.from('products').select('*').order('name')),
       server(sb.from('customers').select('*').order('name')),
       server(sb.rpc('my_role')),
       server(sb.from('bills').select('id,updated_at'), 20000),
+      server(sb.from('payments').select('*').order('pay_date', { ascending: false }), 20000),
     ]);
     if (settings) await kvSet('settings', settings);
     await kvSet('role', role || null);
@@ -127,6 +133,10 @@
     };
     await keepLocal('products', products);
     await keepLocal('customers', customers);
+    const paySig = (rows) => rows.map((r) => r.id + (r.updated_at || '')).sort().join('|');
+    const payBefore = paySig(await L.all('payments'));
+    await keepLocal('payments', payments);
+    const payChanged = paySig(await L.all('payments')) !== payBefore ? 1 : 0;
 
     // bills: fetch only the ones that are new or changed
     const local = await L.all('bills');
@@ -139,7 +149,7 @@
     }
     const gone = local.filter((b) => !serverIds.has(b.id) && !pendingIds.has(b.id) && !b._local).map((b) => b.id);
     if (gone.length) await L.delMany('bills', gone);
-    return { changed: changed.length, removed: gone.length };
+    return { changed: changed.length + payChanged, removed: gone.length };
   }
 
   /* ------------------------------ sync loop ------------------------------ */
@@ -312,6 +322,37 @@
       return row;
     },
     deleteBill: async (id) => { await L.del('bills', id); await queue({ k: 'delete', t: 'bills', id }); },
+
+    // ---------- payments / receipts ----------
+    payments: async ({ q, from, to, billId } = {}) => {
+      let list = await L.all('payments');
+      if (billId) list = list.filter((p) => p.bill_id === billId);
+      if (from) list = list.filter((p) => p.pay_date >= from);
+      if (to) list = list.filter((p) => p.pay_date <= to);
+      if (q && q.trim()) { const s = q.trim().toLowerCase(); list = list.filter((p) => [p.customer_name, p.receipt_no, p.bill_no, p.customer_phone, p.reference].some((v) => String(v || '').toLowerCase().includes(s))); }
+      list.sort((a, b) => String(b.pay_date).localeCompare(String(a.pay_date)) || String(b.created_at || '').localeCompare(String(a.created_at || '')));
+      return list;
+    },
+    payment: (id) => L.get('payments', id),
+    // Online: the normal series (KPE/R-0001…). Offline: this device's own series (KPE/R-D1-001…)
+    nextReceiptNo: async () => {
+      if (navigator.onLine) { try { return await server(sb.rpc('next_receipt_no'), 5000); } catch (e) { if (!isNet(e)) throw e; } }
+      const code = await kvGet('device');
+      if (!code) throw new Error('This device has not been set up for offline receipts yet — connect to the internet once, then try again.');
+      const n = ((await kvGet('offSeqR')) || 0) + 1; await kvSet('offSeqR', n);
+      const prefix = ((await kvGet('settings')) || {}).bill_prefix || '';
+      return `${prefix}R-${code}-${String(n).padStart(3, '0')}`;
+    },
+    savePayment: async (p) => {
+      const user = await kvGet('user');
+      const row = { ...p, id: p.id || uuid() };
+      row.created_at = row.created_at || new Date().toISOString();
+      row.created_by = row.created_by || user?.email || null;
+      await L.put('payments', { ...row, _local: true });
+      await queue({ k: 'upsert', t: 'payments', id: row.id, row });
+      return row;
+    },
+    deletePayment: async (id) => { await L.del('payments', id); await queue({ k: 'delete', t: 'payments', id }); },
   };
 
   countPending();

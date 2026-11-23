@@ -186,7 +186,7 @@
     if (!S.inApp) return;
     [S.settings, S.products, S.customers] = await Promise.all([DB.getSettings(), DB.products(), DB.customers()]);
     const page = location.hash.replace(/^#\/?/, '').split('/')[0] || 'dashboard';
-    if ((e.detail?.changed || e.detail?.removed) && ['dashboard', 'bills', 'customers', 'products'].includes(page) && $('#modal').hidden) route();
+    if ((e.detail?.changed || e.detail?.removed) && ['dashboard', 'bills', 'receipts', 'customers', 'products'].includes(page) && $('#modal').hidden) route();
   });
   $('#menu-btn').addEventListener('click', () => $('#app-view').classList.toggle('nav-open'));
   $('#side-backdrop').addEventListener('click', () => $('#app-view').classList.remove('nav-open'));
@@ -194,7 +194,7 @@
   const refreshLists = async () => { try { [S.products, S.customers] = await Promise.all([DB.products(), DB.customers()]); } catch (e) { /* non fatal */ } };
 
   /* =========================== ROUTER =========================== */
-  const TITLES = { dashboard: 'Dashboard', new: 'New Bill', edit: 'Edit Bill', bills: 'All Bills', customers: 'Customers', products: 'Products', team: 'Team', settings: 'Settings' };
+  const TITLES = { dashboard: 'Dashboard', new: 'New Bill', edit: 'Edit Bill', bills: 'All Bills', receipts: 'Receipts', customers: 'Customers', products: 'Products', team: 'Team', settings: 'Settings' };
   let leaveGuard = null;
 
   function route() {
@@ -209,7 +209,7 @@
     const page = $('#page');
     page.innerHTML = '<div class="loading-row"><span class="spinner"></span></div>';
     window.scrollTo(0, 0);
-    const fn = { dashboard: pageDashboard, new: pageEditor, edit: pageEditor, bills: pageBills, customers: pageCustomers, products: pageProducts, team: pageTeam, settings: pageSettings }[name];
+    const fn = { dashboard: pageDashboard, new: pageEditor, edit: pageEditor, bills: pageBills, receipts: pageReceipts, customers: pageCustomers, products: pageProducts, team: pageTeam, settings: pageSettings }[name];
     Promise.resolve(fn(page, parts.slice(1))).catch((e) => { page.innerHTML = `<div class="card empty">${esc(e.message)}</div>`; fail(e); });
   }
   window.addEventListener('hashchange', route);
@@ -218,31 +218,35 @@
   /* =========================== PRINT / PDF / SHARE =========================== */
   const waitImages = (root) => Promise.all($$('img', root).map((im) => im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; })));
 
-  async function printBill(bill, opts) {
+  // a "doc" is anything printable: { html, name } — a bill or a payment receipt
+  const pdfName = (b) => `${(b.bill_no || 'Bill').replace(/[\\/]+/g, '-')}_${(b.customer_name || '').replace(/[^\w]+/g, '_').slice(0, 30)}.pdf`;
+  const receiptName = (p) => `Receipt_${(p.receipt_no || '').replace(/[\\/]+/g, '-')}_${(p.customer_name || '').replace(/[^\w]+/g, '_').slice(0, 30)}.pdf`;
+  const billDoc = (bill, opts) => ({ html: renderInvoice(bill, S.settings, opts), name: pdfName(bill) });
+  const receiptDoc = (pay, opts) => ({ html: renderReceipt(pay, S.settings, opts), name: receiptName(pay) });
+
+  async function printDoc(doc) {
     const area = $('#print-area');
-    area.innerHTML = renderInvoice(bill, S.settings, opts);
+    area.innerHTML = doc.html;
     await waitImages(area);
     if (document.fonts?.ready) await document.fonts.ready;
     const prevTitle = document.title;
-    document.title = pdfName(bill).replace(/\.pdf$/, '');
+    document.title = doc.name.replace(/\.pdf$/, '');
     if (window.KPEAndroid) KPEAndroid.print(document.title); // Android app: system print screen (printer or Save as PDF)
     else window.print();
     setTimeout(() => { document.title = prevTitle; }, 1500);
   }
 
-  const pdfName = (b) => `${(b.bill_no || 'Bill').replace(/[\\/]+/g, '-')}_${(b.customer_name || '').replace(/[^\w]+/g, '_').slice(0, 30)}.pdf`;
-
-  async function pdfWorker(bill, opts) {
+  async function pdfWorker(doc) {
     const holder = document.createElement('div');
     holder.style.cssText = 'position:fixed;left:-10000px;top:0;';
-    holder.innerHTML = renderInvoice(bill, S.settings, opts);
+    holder.innerHTML = doc.html;
     document.body.appendChild(holder);
     const el = holder.firstElementChild;
     el.style.minHeight = '296.5mm';
     await waitImages(holder);
     if (document.fonts?.ready) await document.fonts.ready;
     const worker = html2pdf().set({
-      margin: 0, filename: pdfName(bill),
+      margin: 0, filename: doc.name,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
@@ -252,32 +256,47 @@
   }
 
   // Android app: hand the finished PDF to the phone (saved in Downloads/KPE Bills, then opened or shared)
-  async function androidPdf(bill, opts, share) {
-    const { worker, done } = await pdfWorker(bill, opts);
-    try { const uri = await worker.outputPdf('datauristring'); KPEAndroid.savePdf(uri.slice(uri.indexOf(',') + 1), pdfName(bill), !!share); }
+  async function androidPdf(doc, share) {
+    const { worker, done } = await pdfWorker(doc);
+    try { const uri = await worker.outputPdf('datauristring'); KPEAndroid.savePdf(uri.slice(uri.indexOf(',') + 1), doc.name, !!share); }
     finally { done(); }
   }
 
-  async function downloadPdf(bill, opts) {
+  async function downloadDoc(doc) {
     toast('Preparing PDF…');
-    if (window.KPEAndroid) return androidPdf(bill, opts, false);
-    const { worker, done } = await pdfWorker(bill, opts);
+    if (window.KPEAndroid) return androidPdf(doc, false);
+    const { worker, done } = await pdfWorker(doc);
     try { await worker.save(); } finally { done(); }
   }
 
+  // share the PDF through the phone's share sheet; otherwise open WhatsApp with a text summary
+  async function shareDoc(doc, { title, text, phone }) {
+    if (window.KPEAndroid) { toast('Preparing PDF…'); return androidPdf(doc, true); }
+    try {
+      const { worker, done } = await pdfWorker(doc);
+      const blob = await worker.outputPdf('blob'); done();
+      const file = new File([blob], doc.name, { type: 'application/pdf' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title, text }); return; }
+    } catch (e) { if (e.name === 'AbortError') return; }
+    const ph = String(phone || '').replace(/\D/g, '');
+    const to = ph.length === 10 ? '91' + ph : ph;
+    window.open(`https://wa.me/${to}?text=${encodeURIComponent(text)}`, '_blank');
+  }
+
+  const printBill = (bill, opts) => printDoc(billDoc(bill, opts));
+  const downloadPdf = (bill, opts) => downloadDoc(billDoc(bill, opts));
+  const printReceipt = (pay, opts) => printDoc(receiptDoc(pay, opts));
+  const downloadReceipt = (pay, opts) => downloadDoc(receiptDoc(pay, opts));
+
   async function shareBill(bill, opts) {
     const c = calcBill(bill.items || [], { companyState: S.settings.state, placeOfSupply: bill.place_of_supply, roundOff: S.settings.round_off !== false, paid: bill.paid });
-    if (window.KPEAndroid) { toast('Preparing PDF…'); return androidPdf(bill, opts, true); }
     const text = `${S.settings.name || 'K.P. ENTERPRISES'}\nBill ${bill.bill_no || ''} dated ${dmy(bill.bill_date)}\nCustomer: ${bill.customer_name}\nTotal: ${money(c.grand)}\nPaid: ${money(c.paid)}\nBalance: ${money(c.balance)}\nThank you!`;
-    try {
-      const { worker, done } = await pdfWorker(bill, opts);
-      const blob = await worker.outputPdf('blob'); done();
-      const file = new File([blob], pdfName(bill), { type: 'application/pdf' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: bill.bill_no, text }); return; }
-    } catch (e) { if (e.name === 'AbortError') return; }
-    const phone = String(bill.customer_phone || '').replace(/\D/g, '');
-    const to = phone.length === 10 ? '91' + phone : phone;
-    window.open(`https://wa.me/${to}?text=${encodeURIComponent(text)}`, '_blank');
+    return shareDoc(billDoc(bill, opts), { title: bill.bill_no, text, phone: bill.customer_phone });
+  }
+
+  async function shareReceipt(pay, opts) {
+    const text = `${S.settings.name || 'K.P. ENTERPRISES'}\nPayment receipt ${pay.receipt_no || ''} dated ${dmy(pay.pay_date)}\nReceived from: ${pay.customer_name}\nAmount received: ${money(pay.amount)}${pay.mode ? ' (' + pay.mode + ')' : ''}${pay.bill_no ? `\nAgainst bill: ${pay.bill_no}\nBalance due: ${money(Math.max(0, num(pay.balance_after)))}` : ''}\nThank you!`;
+    return shareDoc(receiptDoc(pay, opts), { title: pay.receipt_no, text, phone: pay.customer_phone });
   }
 
   /* Scaled live A4 preview inside a container */
@@ -403,10 +422,20 @@
         <button class="btn btn-sm btn-danger admin-only" data-a="del">${icon.del}Delete</button>
       </div>
       ${signToggles()}
+      <div class="bill-receipts" id="bill-receipts"></div>
       <div class="preview-shell" style="margin-top:12px"></div>`);
     const shell = $('.preview-shell', box);
     const draw = () => mountPreview(shell, renderInvoice(bill, S.settings, signOpts(box)));
     draw();
+    // receipts already made for this bill, and any paid amount that has no receipt yet
+    let pays = [];
+    DB.payments({ billId: bill.id }).then((list) => {
+      pays = list;
+      const got = r2(list.reduce((t, p) => t + num(p.amount), 0)), open = r2(num(bill.paid) - got);
+      const el = $('#bill-receipts', box); if (!el) return;
+      el.innerHTML = (list.length ? `<span class="muted">Receipts:</span>${list.map((p) => `<button type="button" class="chip" data-rc="${p.id}"><b>${esc(p.receipt_no)}</b> · ${money(p.amount)} · ${dmy(p.pay_date)}</button>`).join('')}` : '')
+        + (open > 0.009 ? `<button type="button" class="chip" data-a="rc-paid">${list.length ? '+ ' : ''}Make receipt for ${money(open)} already paid</button>` : '');
+    }).catch(() => null);
     box.addEventListener('change', (e) => { if (e.target.name?.startsWith('opt-')) draw(); });
     box.addEventListener('click', async (e) => {
       const a = e.target.closest('[data-a]')?.dataset.a; if (!a) return;
@@ -417,24 +446,175 @@
         if (a === 'edit') { closeModal(); location.hash = '#/edit/' + bill.id; }
         if (a === 'del' && await confirmBox('Delete bill?', 'This bill will be permanently removed.')) { await DB.deleteBill(bill.id); closeModal(); toast('Bill deleted'); reload(); }
         if (a === 'pay') recordPayment(bill, reload);
+        if (a === 'rc-paid') recordPayment(bill, reload, { already: r2(num(bill.paid) - pays.reduce((t, p) => t + num(p.amount), 0)) });
+      } catch (er) { fail(er); }
+    });
+    box.addEventListener('click', (e) => {
+      const id = e.target.closest('[data-rc]')?.dataset.rc; if (!id) return;
+      const p = pays.find((x) => x.id === id); if (p) viewReceipt(p, reload);
+    });
+  }
+
+  const PAY_MODES = ['Cash', 'UPI', 'Bank Transfer (NEFT/RTGS/IMPS)', 'Cheque', 'Card', 'Other'];
+
+  // already > 0: the money is already counted in the bill's Paid amount — only the receipt is made
+  function recordPayment(bill, reload, { already = 0 } = {}) {
+    const max = already > 0 ? already : Math.max(0, num(bill.balance));
+    const box = openModal(`
+      <div class="modal-h"><h3>${already > 0 ? 'Receipt for amount already paid' : 'Record payment'} · ${esc(bill.bill_no)}</h3><button class="icon-btn" data-close>✕</button></div>
+      <p class="muted" style="margin:0 0 14px">${esc(bill.customer_name)} · Total ${money(bill.grand_total)} · Paid ${money(bill.paid)} · <b style="color:#b3261e">Balance ${money(bill.balance)}</b></p>
+      <form class="grid">
+        <div class="grid g2">
+          <label class="fld"><span>Amount received (₹)</span><input class="input" name="amt" type="number" step="0.01" min="0.01" ${already > 0 ? `max="${r2(max)}"` : ''} value="${r2(max) || ''}" required></label>
+          <label class="fld"><span>Date</span><input class="input" name="date" type="date" value="${today()}" required></label>
+        </div>
+        <div class="grid g2">
+          <label class="fld"><span>Payment mode</span><select class="select input" name="mode">${PAY_MODES.map((m) => `<option>${esc(m)}</option>`).join('')}</select></label>
+          <label class="fld"><span>Reference no. (UTR / cheque no.)</span><input class="input" name="ref" placeholder="Optional"></label>
+        </div>
+        <label class="fld"><span>Notes (optional, printed on receipt)</span><input class="input" name="notes"></label>
+        <p class="muted" style="margin:0;font-size:12.5px">${already > 0 ? 'This amount is already counted in the bill — only the receipt will be made.' : 'A payment receipt with your stamp and signature is made automatically.'}</p>
+        <div style="display:flex;gap:10px;justify-content:flex-end"><button type="button" class="btn" data-close>Cancel</button><button class="btn btn-primary">${icon.rupee}Save &amp; make receipt</button></div>
+      </form>`, 'sm');
+    $('form', box).addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const f = e.target, amt = r2(num(f.amt.value));
+      if (amt <= 0) { toast('Enter the amount received', true); return; }
+      const btn = $('.btn-primary', f); btn.disabled = true;
+      try {
+        let paid = num(bill.paid), balance = num(bill.balance);
+        if (!(already > 0)) { paid = r2(paid + amt); balance = r2(num(bill.grand_total) - paid); }
+        const receipt_no = await DB.nextReceiptNo();
+        if (!(already > 0)) { await DB.saveBill({ id: bill.id, paid, balance }); Object.assign(bill, { paid, balance }); }
+        const pay = await DB.savePayment({
+          receipt_no, pay_date: f.date.value || today(), bill_id: bill.id, bill_no: bill.bill_no, bill_date: bill.bill_date || null,
+          customer_name: bill.customer_name, customer_address: bill.customer_address || null, customer_phone: bill.customer_phone || null, customer_gstin: bill.customer_gstin || null,
+          amount: amt, mode: f.mode.value, reference: f.ref.value.trim() || null, notes: f.notes.value.trim() || null,
+          bill_total: num(bill.grand_total), balance_after: Math.max(0, balance),
+        });
+        toast(`Receipt ${pay.receipt_no} saved`);
+        reload();
+        viewReceipt(pay, reload);
+      } catch (er) { btn.disabled = false; fail(er); }
+    });
+  }
+
+  /* =========================== RECEIPTS =========================== */
+  function viewReceipt(pay, reload) {
+    const box = openModal(`
+      <div class="modal-h"><h3>Receipt ${esc(pay.receipt_no)} · ${esc(pay.customer_name)}</h3><button class="icon-btn" data-close>✕</button></div>
+      <div class="actionbar" style="margin:0 0 6px">
+        <button class="btn btn-dark btn-sm" data-a="print">${icon.print}Print</button>
+        <button class="btn btn-gold btn-sm" data-a="pdf">${icon.pdf}Download PDF</button>
+        <button class="btn btn-sm" data-a="share">${icon.share}Share</button>
+        <button class="btn btn-sm btn-danger admin-only" data-a="del">${icon.del}Delete</button>
+      </div>
+      ${signToggles()}
+      <div class="preview-shell" style="margin-top:12px"></div>`);
+    const shell = $('.preview-shell', box);
+    const draw = () => mountPreview(shell, renderReceipt(pay, S.settings, signOpts(box)));
+    draw();
+    box.addEventListener('change', (e) => { if (e.target.name?.startsWith('opt-')) draw(); });
+    box.addEventListener('click', async (e) => {
+      const a = e.target.closest('[data-a]')?.dataset.a; if (!a) return;
+      try {
+        if (a === 'print') printReceipt(pay, signOpts(box));
+        if (a === 'pdf') downloadReceipt(pay, signOpts(box));
+        if (a === 'share') shareReceipt(pay, signOpts(box));
+        if (a === 'del' && await deleteReceipt(pay)) { closeModal(); reload && reload(); }
       } catch (er) { fail(er); }
     });
   }
 
-  function recordPayment(bill, reload) {
+  async function deleteReceipt(pay) {
+    if (!(await confirmBox('Delete receipt?', `Receipt ${pay.receipt_no} will be removed. The bill's Paid amount is NOT changed — edit the bill if the payment itself was wrong.`))) return false;
+    await DB.deletePayment(pay.id); toast('Receipt deleted'); return true;
+  }
+
+  // choose a bill to take a payment against (unpaid bills first)
+  async function pickBillForPayment(reload) {
+    const bills = await DB.bills({ limit: 5000 });
     const box = openModal(`
-      <div class="modal-h"><h3>Record payment · ${esc(bill.bill_no)}</h3><button class="icon-btn" data-close>✕</button></div>
-      <p class="muted" style="margin:0 0 14px">Total ${money(bill.grand_total)} · Paid ${money(bill.paid)} · <b style="color:#b3261e">Balance ${money(bill.balance)}</b></p>
-      <form class="grid">
-        <label class="fld"><span>Amount received (₹)</span><input class="input" name="amt" type="number" step="0.01" min="0" value="${r2(Math.max(0, bill.balance))}" required></label>
-        <div style="display:flex;gap:10px;justify-content:flex-end"><button type="button" class="btn" data-close>Cancel</button><button class="btn btn-primary">Save payment</button></div>
-      </form>`, 'sm');
-    $('form', box).addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const paid = r2(num(bill.paid) + num(e.target.amt.value));
-      try { await DB.saveBill({ id: bill.id, paid, balance: r2(num(bill.grand_total) - paid) }); closeModal(); toast('Payment recorded'); reload(); }
-      catch (er) { fail(er); }
+      <div class="modal-h"><h3>New receipt — choose the bill</h3><button class="icon-btn" data-close>✕</button></div>
+      <input class="input" id="pb-q" placeholder="Search customer, bill no. or phone" autocomplete="off">
+      <div class="pick-list" id="pb-list"></div>`, 'sm');
+    const q = $('#pb-q', box), list = $('#pb-list', box);
+    const draw = () => {
+      const s = q.value.trim().toLowerCase();
+      const rows = bills.filter((b) => !s || [b.customer_name, b.bill_no, b.customer_phone].some((v) => String(v || '').toLowerCase().includes(s)))
+        .sort((a, b) => (num(b.balance) > 0) - (num(a.balance) > 0)).slice(0, 40);
+      list.innerHTML = rows.length ? rows.map((b) => `<button type="button" class="pick-row" data-id="${b.id}">
+          <span><b>${esc(b.customer_name)}</b><small>${esc(b.bill_no)} · ${dmy(b.bill_date)}</small></span>
+          <span class="num">${num(b.balance) > 0 ? `<b style="color:#b3261e">${money(b.balance)}</b><small>balance</small>` : '<span class="pill paid">Paid</span>'}</span></button>`).join('')
+        : '<div class="empty" style="padding:20px">No bills found</div>';
+    };
+    draw();
+    q.addEventListener('input', debounce(draw, 150));
+    list.addEventListener('click', (e) => {
+      const b = bills.find((x) => x.id === e.target.closest('[data-id]')?.dataset.id); if (!b) return;
+      if (num(b.balance) <= 0) { viewBill(b, reload); toast('This bill is fully paid — its receipts are shown here'); return; }
+      recordPayment(b, reload);
     });
+    setTimeout(() => q.focus(), 50);
+  }
+
+  async function pageReceipts(page) {
+    page.innerHTML = `
+      <div class="card">
+        <div class="toolbar">
+          <label class="fld grow"><span>Search</span><input class="input" id="r-q" placeholder="Customer, receipt no., bill no. or reference"></label>
+          <label class="fld"><span>From</span><input class="input" type="date" id="r-from"></label>
+          <label class="fld"><span>To</span><input class="input" type="date" id="r-to"></label>
+          <button class="btn" id="r-csv">${icon.pdf}Export CSV</button>
+          <button class="btn btn-primary" id="r-new">${icon.plus}New receipt</button>
+        </div>
+        <div id="r-sum" class="muted" style="font-size:12.5px;margin:-4px 0 8px"></div>
+        <div id="r-list"><div class="loading-row"><span class="spinner"></span></div></div>
+      </div>`;
+    let current = [];
+    const load = async () => {
+      current = await DB.payments({ q: $('#r-q').value, from: $('#r-from').value, to: $('#r-to').value });
+      $('#r-sum').textContent = `${current.length} receipts · Received ${money(current.reduce((t, p) => t + num(p.amount), 0))}`;
+      $('#r-list').innerHTML = !current.length
+        ? `<div class="empty">${icon.doc}No receipts yet. Open a bill and press <b>Record payment</b>, or use <b>New receipt</b> above.</div>`
+        : `<div class="table-wrap"><table class="tbl">
+          <thead><tr><th>Receipt No.</th><th>Date</th><th>Customer</th><th>Bill No.</th><th>Mode</th><th class="num">Amount</th><th></th></tr></thead>
+          <tbody>${current.map((p) => `
+            <tr class="click" data-rid="${p.id}">
+              <td><b>${esc(p.receipt_no)}</b>${p.created_by ? `<br><span class="by">by ${esc(String(p.created_by).split('@')[0])}</span>` : ''}</td><td>${dmy(p.pay_date)}</td>
+              <td>${esc(p.customer_name)}${p.customer_phone ? `<br><small class="muted">${esc(p.customer_phone)}</small>` : ''}</td>
+              <td>${esc(p.bill_no || '—')}</td>
+              <td>${esc(p.mode || '')}${p.reference ? `<br><small class="muted">${esc(p.reference)}</small>` : ''}</td>
+              <td class="num"><b>${money(p.amount)}</b></td>
+              <td class="acts">
+                <button class="icon-btn" data-ract="print" title="Print">${icon.print}</button>
+                <button class="icon-btn" data-ract="pdf" title="Download PDF">${icon.pdf}</button>
+                <button class="icon-btn admin-only" data-ract="del" title="Delete" style="color:#b3261e">${icon.del}</button>
+              </td>
+            </tr>`).join('')}</tbody></table></div>`;
+    };
+    const reload = () => load().catch(fail);
+    const dl = debounce(reload, 250);
+    $$('#r-q,#r-from,#r-to').forEach((el) => el.addEventListener('input', dl));
+    $('#r-new').addEventListener('click', () => pickBillForPayment(reload).catch(fail));
+    $('#r-csv').addEventListener('click', () => {
+      const rows = [['Receipt No', 'Date', 'Customer', 'Phone', 'Bill No', 'Mode', 'Reference', 'Amount', 'Balance after'], ...current.map((p) => [p.receipt_no, dmy(p.pay_date), p.customer_name, p.customer_phone || '', p.bill_no || '', p.mode || '', p.reference || '', p.amount, p.balance_after])];
+      const csv = rows.map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' })); a.download = `KPE_receipts_${today()}.csv`; a.click();
+    });
+    // rows use data-rid / data-ract (not data-id / data-act) so the bills-table click handler never treats a receipt as a bill
+    $('#r-list').addEventListener('click', async (e) => {
+      const tr = e.target.closest('tr[data-rid]'); if (!tr) return;
+      const pay = current.find((x) => x.id === tr.dataset.rid); if (!pay) return;
+      const act = e.target.closest('[data-ract]')?.dataset.ract;
+      try {
+        if (act === 'print') return printReceipt(pay, {});
+        if (act === 'pdf') return downloadReceipt(pay, {});
+        if (act === 'del') { if (await deleteReceipt(pay)) reload(); return; }
+        viewReceipt(pay, reload);
+      } catch (er) { fail(er); }
+    });
+    await load();
   }
 
   /* =========================== ALL BILLS =========================== */

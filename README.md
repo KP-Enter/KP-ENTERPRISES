@@ -7,6 +7,8 @@ Web billing application for **K.P. Enterprises** (Solar Energy | Sustainability)
 - **Download PDF**, **Print** (A4) and **Share** (WhatsApp / phone share sheet)
 - **Signature & stamp** on every bill: draw or upload your signature, upload your rubber stamp or use the generated one
 - Every bill is saved in **Supabase**: search, filter by date / unpaid, edit, record payments, export CSV
+- **Payment receipts**: every payment recorded against a bill makes a numbered receipt (KPE/R-0001…) with the same
+  stamp and signature — print, PDF or share it; all receipts are listed on the **Receipts** page
 - Customers and products are remembered automatically for quick billing
 - Dashboard with total sales, monthly sales chart and pending payments
 - Works on phone, tablet and computer
@@ -52,6 +54,7 @@ Authentication → URL Configuration (Site URL and Redirect URLs).
 | `js/config.js` | Supabase URL and publishable key |
 | `js/utils.js` | GST maths, amount in words, Indian states, stamp generator |
 | `js/invoice.js` | Bill renderer |
+| `js/receipt.js` | Payment receipt renderer |
 | `js/db.js` | Supabase data access |
 | `js/app.js` | Pages: dashboard, new/edit bill, bills, customers, products, settings |
 | `supabase/schema.sql` | Database tables, roles, security policies and functions |

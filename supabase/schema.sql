@@ -154,3 +154,51 @@ create policy "bills delete" on public.bills for delete to authenticated using (
 
 -- Team logins are created from the app (Team page) through the edge function
 -- supabase/functions/manage-users, which is deployed to the project.
+
+-- ===================== Payment receipts — applied as migration kpe_payment_receipts =====================
+-- One row per payment taken against a bill. The app prints it as a "Payment Receipt" with stamp and signature.
+create sequence if not exists public.receipt_no_seq start 1;
+
+create table public.payments (
+  id uuid primary key default gen_random_uuid(),
+  receipt_no text not null unique,
+  pay_date date not null default current_date,
+  bill_id uuid references public.bills(id) on delete set null,
+  bill_no text,
+  bill_date date,
+  customer_name text not null,
+  customer_address text,
+  customer_phone text,
+  customer_gstin text,
+  amount numeric(14,2) not null default 0,
+  mode text default 'Cash',
+  reference text,
+  notes text,
+  bill_total numeric(14,2) default 0,
+  balance_after numeric(14,2) default 0,
+  created_by text default (auth.jwt() ->> 'email'),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index payments_date_idx on public.payments (pay_date desc);
+create index payments_bill_idx on public.payments (bill_id);
+
+create or replace function public.next_receipt_no()
+returns text language plpgsql security definer set search_path = public as $$
+declare p text; n bigint;
+begin
+  if not public.is_allowed() then raise exception 'not allowed'; end if;
+  select coalesce(bill_prefix,'') into p from public.company_settings where id = 1;
+  n := nextval('public.receipt_no_seq');
+  return p || 'R-' || lpad(n::text, 4, '0');
+end $$;
+revoke execute on function public.next_receipt_no() from public, anon;
+grant execute on function public.next_receipt_no() to authenticated;
+
+create trigger payments_touch before update on public.payments for each row execute function public.touch_updated_at();
+
+alter table public.payments enable row level security;
+create policy "payments read" on public.payments for select to authenticated using (public.is_allowed());
+create policy "payments insert" on public.payments for insert to authenticated with check (public.is_allowed());
+create policy "payments update" on public.payments for update to authenticated using (public.is_allowed()) with check (public.is_allowed());
+create policy "payments delete" on public.payments for delete to authenticated using (public.is_admin());
